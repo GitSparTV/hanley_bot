@@ -1,18 +1,31 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.22)
+
 project(hanley_bot CXX)
 set(CMAKE_CXX_STANDARD 20)
-set(Boost_USE_MULTITHREADED ON)
 
-find_package(Threads REQUIRED)
-find_package(OpenSSL REQUIRED)
-find_package(Boost COMPONENTS system REQUIRED)
-find_package(CURL)
-include_directories(/usr/local/include ${OPENSSL_INCLUDE_DIR} ${Boost_INCLUDE_DIR})
-if (CURL_FOUND)
-    include_directories(${CURL_INCLUDE_DIRS})
-    add_definitions(-DHAVE_CURL)
-endif()
+include(${CMAKE_BINARY_DIR}/conanbuildinfo_multi.cmake)
+conan_basic_setup(TARGETS)
 
-add_executable(hanley_bot src/main.cpp)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+add_compile_definitions(BOOST_BEAST_USE_STD_STRING_VIEW)
 
-target_link_libraries(hanley_bot /usr/local/lib/libTgBot.a ${CMAKE_THREAD_LIBS_INIT} ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES} ${CURL_LIBRARIES})
+add_executable(hanley_bot
+	src/main.cpp
+	src/tg_utils.h
+	src/tg_utils.cpp
+	src/tg_debug.h
+	src/tg_debug.cpp
+	src/bot.h
+	src/bot.cpp
+	src/state_machine.cpp
+	src/state_machine.h
+	src/state_base.h
+	src/state_machine_base.cpp
+	src/state_machine_base.h
+	src/states_controller.cpp
+	src/states_controller.h
+	src/main_course_form.cpp
+	src/main_course_form.h
+	)
+target_include_directories(hanley_bot PRIVATE CONAN_PKG::tgbot CONAN_PKG::boost CONAN_PKG::libpqxx)
+target_link_libraries(hanley_bot PRIVATE CONAN_PKG::tgbot CONAN_PKG::boost CONAN_PKG::libpqxx)
