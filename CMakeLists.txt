@@ -8,19 +8,24 @@ conan_basic_setup(TARGETS)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 add_compile_definitions(BOOST_BEAST_USE_STD_STRING_VIEW)
+add_compile_definitions(_SILENCE_CXX20_CISO646_REMOVED_WARNING)
 
 add_executable(hanley_bot
 	src/main.cpp
-	src/tg_utils.h
+	src/logging.cpp
+	src/logging.h
 	src/tg_utils.cpp
-	src/tg_debug.h
+	src/tg_utils.h
 	src/tg_debug.cpp
-	src/bot.h
+	src/tg_debug.h
 	src/bot.cpp
+	src/bot.h
+	src/bot_commands.cpp
+	src/bot_commands.h
+	src/config.h
 	src/state_machine.cpp
 	src/state_machine.h
 	src/state_base.h
-	src/state_machine_base.cpp
 	src/state_machine_base.h
 	src/states_controller.cpp
 	src/states_controller.h
