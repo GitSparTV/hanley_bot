@@ -1,8 +1,11 @@
 #include <pqxx/pqxx>
 
 #include <cassert>
+#include <charconv>
 #include <string>
 #include <vector>
+#include <deque>
+#include <format>
 
 #include <tgbot/types/BotCommand.h>
 #include <tgbot/types/Message.h>
@@ -12,6 +15,9 @@
 
 #include "bot_commands.h"
 #include "bot.h"
+#include "tg_utils.h"
+
+using namespace std::literals;
 
 namespace hanley_bot::commands {
 
@@ -22,7 +28,7 @@ enum class Permission {
 };
 
 struct CommandInfo {
-	using Callback = void(*)(hanley_bot::Bot&, TgBot::Message::Ptr);
+	using Callback = void(*)(hanley_bot::Bot&, const TgBot::Message::Ptr&);
 
 	std::string_view name;
 	std::string_view description;
@@ -76,80 +82,87 @@ void Broadcast(TgBot::Message::Ptr original_message) {
 	//}
 }
 
-void RegisterUser(TgBot::User::Ptr user) {
-	//pqxx::work tx{c};
+void RegisterUser(hanley_bot::Bot& bot, pqxx::work& tx, TgBot::User::Ptr user) {
+	if (tx.query_value<bool>(std::format("SELECT EXISTS(SELECT 1 FROM users WHERE telegram_id = {})", user->id))) {
+		return;
+	}
 
-	//tx.exec0(
-	//	std::format("INSERT INTO users (telegram_id, first_name, last_name) VALUES ({}, '{}', NULLIF('{}','')) ON CONFLICT (telegram_id) DO UPDATE SET first_name = excluded.first_name, last_name = excluded.last_name;",
-	//		user->id,
-	//		tx.esc(user->firstName),
-	//		tx.esc(user->lastName))
-	//);
-
-	//tx.commit();
+	tx.exec0(
+		std::format("INSERT INTO users (telegram_id, first_name, last_name) VALUES ({}, '{}', NULLIF('{}','')) ON CONFLICT (telegram_id) DO UPDATE SET first_name = excluded.first_name, last_name = excluded.last_name;",
+			user->id,
+			tx.esc(user->firstName),
+			tx.esc(user->lastName))
+	);
 }
 
-void Start(hanley_bot::Bot& bot, TgBot::Message::Ptr message) {
-	//std::string_view deep_link = message->text;
+void Start(hanley_bot::Bot& bot, const TgBot::Message::Ptr& message) {
+	static constexpr std::string_view kStartCommand = "/start";
 
-	//RegisterUser(message->from);
+	const std::string& text = message->text;
 
-	//if (deep_link.size() <= sizeof("/start ")) {
-	//	std::cout << "No deep link" << std::endl;
-	//	return;
-	//}
+	pqxx::work tx = bot.BeginTransaction();
 
-	//deep_link = deep_link.substr(sizeof("/start"));
+	RegisterUser(bot, tx, message->from);
 
-	//std::cout << deep_link << std::endl;
+	bot.SendMessage(message, "Привет!\nЭто бот русскоязычной группы [\"Хенли. ПФА&ТОН\"](t.me/ruspfasbt).\nБот поможет зарегистрироваться на потоки обучения, а если их ещё нет, то подписаться на уведомления на те курсы, что вас интересуют.\nДля тех, кто уже учится на потоке, этот бот поможет вам активировать курс, получать новости группы и другое.\nСписок доступных всем команд есть у вас в меню внизу слева, если не видно, наберите \"/help\".\n\nВ случае неисправностей или вопросов пишите: t.me/savvatelegram.", {}, "Markdown");
 
-	//bot.getApi().sendMessage(message->chat->id, "Selection test", true, 0);
+	tx.commit();
+
+	if (text.size() <= kStartCommand.size()) {
+		return;
+	}
+
+	auto deep_link = text.substr(kStartCommand.size() + 1);
+
+	if (!deep_link.starts_with("static")) {
+		return;
+	}
+
+	CallCommand(bot, std::move(deep_link), message);
 }
 
-void GetCourses(hanley_bot::Bot& bot, TgBot::Message::Ptr message) {
-	//if (bot.getApi().blockedByUser(message->from->id)) {
-	//	return;
-	//}
+void GetCourses(hanley_bot::Bot& bot, const TgBot::Message::Ptr& message) {
+	//bot.Typing(message->chat->id);
 
-	//pqxx::work tx{c};
+	static constexpr std::string_view kHeader = "Про все курсы и процесс сертификации можно почитать <a href=\"https://abasavva.notion.site/4b49aea6d6964c359039545d198ef7a2\">здесь</a>.\n";
+	static constexpr size_t kAverageCourseNameLength = 30 * 2;
+	static constexpr size_t kStartSize = kHeader.size() + kAverageCourseNameLength * 10;
 
-	//static constexpr std::string_view kHeader = "Про все курсы и процесс сертификации можно почитать <a href=\"https://abasavva.notion.site/4b49aea6d6964c359039545d198ef7a2\">здесь</a>.\n";
-	//static constexpr size_t kAverageCourseNameLength = 30 * 2;
-	//static constexpr size_t kStartSize = kHeader.size() + kAverageCourseNameLength * 10;
+	std::string result;
 
-	//std::string result;
+	result.reserve(kStartSize);
+	result = kHeader;
 
-	//result.reserve(kStartSize);
-	//result = kHeader;
+	hanley_bot::tg::utils::KeyboardBuilder keyboard;
 
-	//hanley_bot::tg::utils::KeyboardBuilder keyboard;
+	static constexpr int kButtonsPerRow = 3;
+	auto row = keyboard.Row();
 
-	//static constexpr int kButtonsPerRow = 3;
-	//auto row = keyboard.Row();
+	pqxx::work tx = bot.BeginTransaction();
 
-	//for (const auto& [id, full_name, is_subscribed] : tx.query<uint64_t, std::string, bool>(std::format("SELECT id, full_name, CASE WHEN subscriptions.course_id IS NOT NULL THEN true ELSE false END AS subscribed FROM courses LEFT JOIN subscriptions ON courses.id = subscriptions.course_id AND subscriptions.telegram_id = {} ORDER BY courses.id ASC", message->from->id))) {
-	//	result += std::format("\n<b>{}.</b> {}{}", id, full_name, is_subscribed ? " <i>(Вы подписаны на уведомления)</i>" : ""sv);
+	for (const auto& [id, full_name, is_subscribed] : tx.query<uint64_t, std::string, bool>(std::format("SELECT id, full_name, CASE WHEN subscriptions.course_id IS NOT NULL THEN true ELSE false END AS subscribed FROM courses LEFT JOIN subscriptions ON courses.id = subscriptions.course_id AND subscriptions.telegram_id = {} ORDER BY courses.id ASC", message->from->id))) {
+		result += std::format("\n<b>{}.</b> {}{}", id, full_name, is_subscribed ? " <i>(Вы подписаны на уведомления)</i>" : ""sv);
 
-	//	row.Callback(std::to_string(id), std::format("static/courses/get/{}", id));
+		row.Callback(std::to_string(id), std::format("static_courses_get_{}", id));
 
-	//	if (id % kButtonsPerRow == 0) {
-	//		row = keyboard.Row();
-	//	}
-	//}
+		if (id % kButtonsPerRow == 0) {
+			row = keyboard.Row();
+		}
+	}
 
-	//tx.commit();
+	bot.SendMessage(message, result, keyboard, "HTML", true);
 
-	//bot.getApi().sendMessage(message->chat->id, result, true, 0, keyboard, "HTML");
+	tx.commit();
 }
 
-void Test(hanley_bot::Bot& bot, TgBot::Message::Ptr message) {
+void Test(hanley_bot::Bot& bot, const TgBot::Message::Ptr& message) {
 	//auto sent = bot.getApi().sendMessage(message->chat->id, "MainCourseForm test");
 
 	//dialogs.Add<hanley_bot::dialogs::MainCourseForm>(sent);
 }
 
 static const std::vector<CommandInfo> kCommands = {
-	{"start", "", Start, Permission::kPublicHidden},
+	{"start", "Начать разговор", Start, Permission::kPublicHidden},
 	{"courses", "Список курсов на русском языке от FTF", GetCourses, Permission::kPublic},
 	{"test", "Тест", Test, Permission::kPublicHidden}
 };
@@ -199,10 +212,10 @@ void InitializeCommands(hanley_bot::Bot& bot) {
 	}
 }
 
-std::vector<std::string_view> SplitPath(std::string_view path) {
-	static constexpr char kSeparator = '/';
+std::deque<std::string_view> SplitPath(std::string_view path) {
+	static constexpr char kSeparator = '_';
 
-	std::vector<std::string_view> split_path;
+	std::deque<std::string_view> split_path;
 
 	while (true) {
 		auto separator = path.find_first_of(kSeparator);
@@ -223,10 +236,86 @@ std::vector<std::string_view> SplitPath(std::string_view path) {
 	return split_path;
 }
 
-void CallCommand(hanley_bot::Bot& bot, std::string path, const TgBot::Message::Ptr& message) {
+struct StaticQueryInfo {
+	using Callback = void(*)(hanley_bot::Bot&, std::deque<std::string_view>&, const TgBot::Message::Ptr&, const TgBot::User::Ptr&);
+
+	Callback callback;
+	Permission permission;
+};
+
+void GetCourse(hanley_bot::Bot& bot, const TgBot::Message::Ptr origin, config::UserID user_id, std::string_view course_id) {
+	int course_id_number;
+
+	auto status = std::from_chars(course_id.data(), course_id.data() + course_id.size(), course_id_number);
+
+	if (status.ec != std::errc{}) {
+		return;
+	}
+
+	auto tx = bot.BeginTransaction();
+
+	auto [full_name, description, url, is_subscribed] = tx.query1<std::string, std::string, std::string, bool>(std::format("SELECT full_name, description, url, CASE WHEN subscriptions.course_id IS NOT NULL THEN true ELSE false END AS subscribed FROM courses WHERE id = {} LEFT JOIN subscriptions ON courses.id = subscriptions.course_id AND subscriptions.telegram_id = {}", course_id_number, user_id));
+
+	const std::string_view is_subscribed_text = is_subscribed ? "<i>Вы подписаны на новости об этом курсе.</i>" : "<i>Вы можете подписаться на новости об этом курсе ниже.</i>";
+
+	std::string result = std::format("<b>{}</b>\n\n{}\n{}", full_name, description, is_subscribed_text);
+
+	hanley_bot::tg::utils::MakeKeyboard keyboard{
+		{
+			{hanley_bot::tg::utils::ButtonType::kLink, "🔗 Ссылка на курс", url}
+		},
+		{
+			{hanley_bot::tg::utils::ButtonType::kCallback,
+			is_subscribed ? "Отписаться от новостей" : "Подписаться на новости",
+			std::format("static_subs_{}_{}", is_subscribed ? "del" : "add", course_id)}
+		}
+	};
+
+	bot.SendMessage(origin, result, keyboard, "HTML");
+
+	tx.commit();
+}
+
+void Courses(hanley_bot::Bot& bot, std::deque<std::string_view>& path,
+	const TgBot::Message::Ptr& message, const TgBot::User::Ptr& user) {
+
+	if (path.front() == "get") {
+		path.pop_front();
+
+		GetCourse(bot, message, user->id, path.front());
+	}
+}
+
+static const std::unordered_map<std::string_view, StaticQueryInfo> kStaticQueries = {
+	{"courses", {Courses, Permission::kPublic}},
+};
+
+void CallCommand(hanley_bot::Bot& bot, std::string path, const TgBot::Message::Ptr& message, const TgBot::User::Ptr& user) {
 	auto split_path = SplitPath(path);
 
 	assert(split_path[0] == "static");
+
+	split_path.pop_front();
+
+	const auto entrypoint = kStaticQueries.find(split_path.front());
+
+	if (entrypoint == std::end(kStaticQueries)) {
+		return;
+	}
+
+	const auto& [callback, permission] = entrypoint->second;
+
+	if (permission == Permission::kOwner && bot.IsOwner(user)) {
+		return;
+	}
+
+	split_path.pop_front();
+
+	callback(bot, split_path, message, user);
+}
+
+void CallCommand(hanley_bot::Bot& bot, std::string path, const TgBot::Message::Ptr& message) {
+	CallCommand(bot, std::move(path), message, message->from);
 }
 
 } // namespace hanley_bot::commands
