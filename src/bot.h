@@ -22,25 +22,37 @@ public:
 public:
 	void Run();
 
-	pqxx::work MakeTransaction();
+	[[nodiscard]] pqxx::work BeginTransaction();
 
-	bool IsOwner(const TgBot::User::Ptr& user) const;
+	[[nodiscard]] bool IsOwner(const TgBot::User::Ptr& user) const;
 
-	bool IsOwner(const TgBot::ChatMember::Ptr& user) const;
+	[[nodiscard]] bool IsOwner(const TgBot::ChatMember::Ptr& user) const;
 
-	bool IsOwner(const TgBot::Message::Ptr& message) const;
+	[[nodiscard]] bool IsOwner(const TgBot::Message::Ptr& message) const;
 
-	bool IsMainGroup(const TgBot::Chat::Ptr& chat) const;
+	[[nodiscard]] bool IsMainGroup(const TgBot::Chat::Ptr& chat) const;
 
-	bool IsFromNewsThread(const TgBot::Message::Ptr& message) const;
+	[[nodiscard]] bool IsFromNewsThread(const TgBot::Message::Ptr& message) const;
 
-	const TgBot::Api& GetAPI();
+	[[nodiscard]] const TgBot::Api& GetAPI();
 
-	config::UserID GetOwnerID() const;
+	[[nodiscard]] config::UserID GetOwnerID() const;
 
 	void RegisterCommand(const std::string& name, const TgBot::EventBroadcaster::MessageListener& listener);
 
-	//private:
+	TgBot::Message::Ptr SendMessage(config::ChatID chat_id, const std::string& text,
+		TgBot::GenericReply::Ptr replyMarkup = std::make_shared<TgBot::GenericReply>(),
+		const std::string& parseMode = "", bool disableWebPagePreview = false,
+		bool protectContent = false, bool disableNotification = false, config::ThreadID thread_id = 0);
+
+	TgBot::Message::Ptr SendMessage(const TgBot::Message::Ptr& get_from_message, const std::string& text,
+		TgBot::GenericReply::Ptr replyMarkup = std::make_shared<TgBot::GenericReply>(),
+		const std::string& parseMode = "", bool disableWebPagePreview = false,
+		bool protectContent = false, bool disableNotification = false);
+
+	bool Typing(config::ChatID chat_id);
+
+private:
 	TgBot::Bot bot_;
 	pqxx::connection database_;
 	state::StatesController dialogs_;

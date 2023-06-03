@@ -2,6 +2,9 @@
 #include <sdkddkver.h>
 #endif
 
+#include <chrono>
+#include <thread>
+
 #include <tgbot/tgbot.h>
 #include <pqxx/pqxx>
 
@@ -9,6 +12,8 @@
 #include "config.h"
 #include "bot_commands.h"
 #include "tg_debug.h"
+
+using namespace std::chrono_literals;
 
 namespace hanley_bot {
 
@@ -19,23 +24,23 @@ Bot::Bot(config::Config& config) :
 	config_(config.bot_config) {}
 //me_(bot_.getApi().getMe()->id) {}
 
-bool Bot::IsOwner(const TgBot::User::Ptr& user) const {
+[[nodiscard]] bool Bot::IsOwner(const TgBot::User::Ptr& user) const {
 	return user->id == config_.owner_id;
 }
 
-bool Bot::IsOwner(const TgBot::ChatMember::Ptr& user) const {
+[[nodiscard]] bool Bot::IsOwner(const TgBot::ChatMember::Ptr& user) const {
 	return IsOwner(user->user);
 }
 
-bool Bot::IsOwner(const TgBot::Message::Ptr& message) const {
+[[nodiscard]] bool Bot::IsOwner(const TgBot::Message::Ptr& message) const {
 	return IsOwner(message->from);
 }
 
-bool Bot::IsMainGroup(const TgBot::Chat::Ptr& chat) const {
+[[nodiscard]] bool Bot::IsMainGroup(const TgBot::Chat::Ptr& chat) const {
 	return chat->id == config_.group_id;
 }
 
-bool Bot::IsFromNewsThread(const TgBot::Message::Ptr& message) const {
+[[nodiscard]] bool Bot::IsFromNewsThread(const TgBot::Message::Ptr& message) const {
 	return IsMainGroup(message->chat) && message->messageThreadId == config_.news_thread_id;
 }
 
@@ -68,11 +73,17 @@ void Bot::Run() {
 		std::cout << std::endl;
 
 		try {
-			if (dialogs_.HandleCallback(query->message, query->data)) {
-				GetAPI().answerCallbackQuery(query->id, "", true, "", 0);
+			if (query->data.starts_with("static/")) {
+				commands::CallCommand(*this, query->data, query->message);
+			} else {
+				dialogs_.HandleCallback(query->message, query->data);
 			}
+
+			GetAPI().answerCallbackQuery(query->id);
 		} catch (const TgBot::TgException& ex) {
-			std::cout << ex.what() << std::endl;
+			GetAPI().answerCallbackQuery(query->id, "Произошла ошибка при выполнении запроса. Если ошибка повторяется, напишите владельцу", true, "", 15);
+
+			std::cout << "onCallbackQuery expection: " << ex.what() << std::endl;
 		}
 	});
 
@@ -87,16 +98,6 @@ void Bot::Run() {
 	bot_.getEvents().onChatJoinRequest([](TgBot::ChatJoinRequest::Ptr update) {
 		std::cout << "onChatJoinRequest" << std::endl;
 	});
-
-	//pqxx::work tx{c};
-
-	//std::string result = "<a href=\"tg://user?id=\">inline mention of a user</a> Доступные курсы:";
-
-	//for (auto [full_name, url, description] : tx.query<std::string, std::string, std::string>("SELECT full_name, url, description FROM courses")) {
-	//    result += "\n<b><a href=\"" + url + "\">" + full_name + "</a></b>\n" + description + '\n';
-	//}
-
-	//bot_.getApi().sendMessage(message->chat->id, result, false, 0, std::make_shared<TgBot::GenericReply>(), "HTML");
 
 	//bot_.getApi().blockedByUser
 	//bot_.getApi().copyMessage
@@ -113,30 +114,47 @@ void Bot::Run() {
 		try {
 			longPoll.start();
 		} catch (const TgBot::TgException& e) {
-			//BOOST_LOG_TRIVIAL(info) << "error: " << e.what();
+			std::cout << "error: " << e.what();
 			std::this_thread::sleep_for(3s);
 		} catch (const std::exception& e) {
-			//BOOST_LOG_TRIVIAL(info) << "(" << typeid(e).name() << ") error: " << e.what();
+			std::cout << "(" << typeid(e).name() << ") error: " << e.what();
 		} catch (...) {
-			//BOOST_LOG_TRIVIAL(info) << "Unknown exception";
+			std::cout << "Unknown exception";
 		}
 	}
 }
 
-pqxx::work Bot::MakeTransaction() {
+[[nodiscard]] pqxx::work Bot::BeginTransaction() {
 	return pqxx::work{database_};
 }
 
-const TgBot::Api& Bot::GetAPI() {
+[[nodiscard]] const TgBot::Api& Bot::GetAPI() {
 	return bot_.getApi();
 }
 
-config::UserID Bot::GetOwnerID() const {
+[[nodiscard]] config::UserID Bot::GetOwnerID() const {
 	return config_.owner_id;
 }
 
 void Bot::RegisterCommand(const std::string& name, const TgBot::EventBroadcaster::MessageListener& listener) {
 	bot_.getEvents().onCommand(name, listener);
+}
+
+TgBot::Message::Ptr Bot::SendMessage(config::ChatID chat_id, const std::string& text,
+	TgBot::GenericReply::Ptr replyMarkup, const std::string& parseMode, bool disableWebPagePreview,
+	bool protectContent, bool disableNotification, config::ThreadID thread_id) {
+
+	return GetAPI().sendMessage(chat_id, text, disableWebPagePreview, 0, std::move(replyMarkup), parseMode, disableNotification, {}, false, protectContent, thread_id);
+}
+
+TgBot::Message::Ptr Bot::SendMessage(const TgBot::Message::Ptr& get_from_message, const std::string& text,
+	TgBot::GenericReply::Ptr replyMarkup, const std::string& parseMode, bool disableWebPagePreview,
+	bool protectContent, bool disableNotification) {
+	return SendMessage(get_from_message->chat->id, text, std::move(replyMarkup), parseMode, disableWebPagePreview, protectContent, disableNotification, get_from_message->messageThreadId);
+}
+
+bool Bot::Typing(config::ChatID chat_id) {
+	return GetAPI().blockedByUser(chat_id);
 }
 
 
