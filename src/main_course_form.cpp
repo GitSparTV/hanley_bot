@@ -26,7 +26,7 @@ Value MainCourseForm::Start::OnEnter(Self self) {
 		}
 	};
 
-	self->GetBot().bot_.getApi().editMessageText("Согласие на обработку, инфо про набор", self->GetMessage()->chat->id, self->GetMessage()->messageId, "", "", false, keyboard);
+	self->GetBot().GetAPI().editMessageText("Согласие на обработку, инфо про набор", self->GetMessage()->chat->id, self->GetMessage()->messageId, "", "", false, keyboard);
 
 	return false;
 }
@@ -51,7 +51,7 @@ Value MainCourseForm::InputFirstName::OnEnter(Self self) {
 		}
 	};
 
-	self->GetBot().bot_.getApi().editMessageText("Введите имя:", self->GetMessage()->chat->id, self->GetMessage()->messageId, "", "", false, keyboard);
+	self->GetBot().GetAPI().editMessageText("Введите имя:", self->GetMessage()->chat->id, self->GetMessage()->messageId, "", "", false, keyboard);
 
 	self->ListenForInput();
 
@@ -61,7 +61,7 @@ Value MainCourseForm::InputFirstName::OnEnter(Self self) {
 Value MainCourseForm::InputFirstName::OnInput([[maybe_unused]] Self self, Message input_message) {
 	self->info.name = input_message->text;
 
-	self->GetBot().bot_.getApi().deleteMessage(input_message->chat->id, input_message->messageId);
+	self->GetBot().GetAPI().deleteMessage(input_message->chat->id, input_message->messageId);
 
 	return States::INPUT_LAST_NAME;
 }
@@ -85,7 +85,7 @@ Value MainCourseForm::InputLastName::OnEnter([[maybe_unused]] Self self) {
 		}
 	};
 
-	self->GetBot().bot_.getApi().editMessageText("Введите фамилию:", self->GetMessage()->chat->id, self->GetMessage()->messageId, "", "", false, keyboard);
+	self->GetBot().GetAPI().editMessageText("Введите фамилию:", self->GetMessage()->chat->id, self->GetMessage()->messageId, "", "", false, keyboard);
 
 	return false;
 }
@@ -93,7 +93,7 @@ Value MainCourseForm::InputLastName::OnEnter([[maybe_unused]] Self self) {
 Value MainCourseForm::InputLastName::OnInput(Self self, Message input_message) {
 	self->info.last_name = input_message->text;
 
-	self->GetBot().bot_.getApi().deleteMessage(input_message->chat->id, input_message->messageId);
+	self->GetBot().GetAPI().deleteMessage(input_message->chat->id, input_message->messageId);
 
 	return States::INPUT_EMAIL;
 }
@@ -117,7 +117,7 @@ Value MainCourseForm::InputEmail::OnEnter(Self self) {
 		}
 	};
 
-	self->GetBot().bot_.getApi().editMessageText("Введите почту в FTF аккаунте:", self->GetMessage()->chat->id, self->GetMessage()->messageId, "", "", false, keyboard);
+	self->GetBot().GetAPI().editMessageText("Введите почту в FTF аккаунте:", self->GetMessage()->chat->id, self->GetMessage()->messageId, "", "", false, keyboard);
 
 	return false;
 }
@@ -132,13 +132,13 @@ Value MainCourseForm::InputEmail::OnInput(Self self, Message input_message) {
 			}
 		};
 
-		self->GetBot().bot_.getApi().deleteMessage(input_message->chat->id, input_message->messageId);
-		self->GetBot().bot_.getApi().editMessageText("Введите почту в FTF аккаунте: [Неверный формат]", self->GetMessage()->chat->id, self->GetMessage()->messageId, "", "", false, keyboard);
+		self->GetBot().GetAPI().deleteMessage(input_message->chat->id, input_message->messageId);
+		self->GetBot().GetAPI().editMessageText("Введите почту в FTF аккаунте: [Неверный формат]", self->GetMessage()->chat->id, self->GetMessage()->messageId, "", "", false, keyboard);
 
 		return false;
 	}
 
-	self->GetBot().bot_.getApi().deleteMessage(input_message->chat->id, input_message->messageId);
+	self->GetBot().GetAPI().deleteMessage(input_message->chat->id, input_message->messageId);
 	self->info.email = input_message->text;
 
 	return States::INPUT_WANTS_CREDENTIALING;
@@ -165,7 +165,7 @@ Value MainCourseForm::InputWantsCredentialing::OnEnter(Self self) {
 		}
 	};
 
-	self->GetBot().bot_.getApi().editMessageText("Хотите реестр?", self->GetMessage()->chat->id, self->GetMessage()->messageId, "", "", false, keyboard);
+	self->GetBot().GetAPI().editMessageText("Хотите реестр?", self->GetMessage()->chat->id, self->GetMessage()->messageId, "", "", false, keyboard);
 
 	return false;
 }
@@ -205,7 +205,7 @@ Value MainCourseForm::InputPaymentType::OnEnter(Self self) {
 		}
 	};
 
-	self->GetBot().bot_.getApi().editMessageText("Как будете оплачивать?", self->GetMessage()->chat->id, self->GetMessage()->messageId, "", "", false, keyboard);
+	self->GetBot().GetAPI().editMessageText("Как будете оплачивать?", self->GetMessage()->chat->id, self->GetMessage()->messageId, "", "", false, keyboard);
 
 	return false;
 }
@@ -248,7 +248,7 @@ Value MainCourseForm::InputNeedsTranslation::OnEnter(Self self) {
 		}
 	};
 
-	self->GetBot().bot_.getApi().editMessageText("Понадобится перевод?", self->GetMessage()->chat->id, self->GetMessage()->messageId, "", "", false, keyboard);
+	self->GetBot().GetAPI().editMessageText("Понадобится перевод?", self->GetMessage()->chat->id, self->GetMessage()->messageId, "", "", false, keyboard);
 
 	return false;
 }
@@ -282,7 +282,7 @@ Value MainCourseForm::InputEnglishLevel::OnEnter(Self self) {
 		}
 	};
 
-	self->GetBot().bot_.getApi().editMessageText("Уровень английского:", self->GetMessage()->chat->id, self->GetMessage()->messageId, "", "", false, keyboard);
+	self->GetBot().GetAPI().editMessageText("Уровень английского:", self->GetMessage()->chat->id, self->GetMessage()->messageId, "", "", false, keyboard);
 
 	return false;
 }
@@ -290,7 +290,7 @@ Value MainCourseForm::InputEnglishLevel::OnEnter(Self self) {
 Value MainCourseForm::InputEnglishLevel::OnInput(Self self, Message input_message) {
 	self->info.english_level = input_message->text;
 
-	self->GetBot().bot_.getApi().deleteMessage(input_message->chat->id, input_message->messageId);
+	self->GetBot().GetAPI().deleteMessage(input_message->chat->id, input_message->messageId);
 
 	return States::CONFIRM;
 }
@@ -315,7 +315,7 @@ Value MainCourseForm::Confirm::OnEnter(Self self) {
 		}
 	};
 
-	self->GetBot().bot_.getApi().editMessageText("Проверьте данные", self->GetMessage()->chat->id, self->GetMessage()->messageId, "", "", false, keyboard);
+	self->GetBot().GetAPI().editMessageText("Проверьте данные", self->GetMessage()->chat->id, self->GetMessage()->messageId, "", "", false, keyboard);
 
 	return false;
 }
