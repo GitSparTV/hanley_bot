@@ -9,6 +9,7 @@
 #include <pqxx/pqxx>
 
 #include "bot.h"
+#include "domain.h"
 #include "config.h"
 #include "bot_commands.h"
 #include "tg_debug.h"
@@ -22,7 +23,6 @@ Bot::Bot(config::Config& config) :
 	database_(config.credentials.database_uri),
 	dialogs_(*this),
 	config_(config.bot_config) {}
-//me_(bot_.getApi().getMe()->id) {}
 
 [[nodiscard]] bool Bot::IsOwner(const TgBot::User::Ptr& user) const {
 	return user->id == config_.owner_id;
@@ -73,7 +73,7 @@ void Bot::Run() {
 		std::cout << std::endl;
 
 		try {
-			if (query->data.starts_with("static/")) {
+			if (query->data.starts_with("static_")) {
 				commands::CallCommand(*this, query->data, query->message);
 			} else {
 				dialogs_.HandleCallback(query->message, query->data);
@@ -118,8 +118,10 @@ void Bot::Run() {
 			std::this_thread::sleep_for(3s);
 		} catch (const std::exception& e) {
 			std::cout << "(" << typeid(e).name() << ") error: " << e.what();
+			std::this_thread::sleep_for(3s);
 		} catch (...) {
 			std::cout << "Unknown exception";
+			std::this_thread::sleep_for(3s);
 		}
 	}
 }
@@ -132,7 +134,7 @@ void Bot::Run() {
 	return bot_.getApi();
 }
 
-[[nodiscard]] config::UserID Bot::GetOwnerID() const {
+[[nodiscard]] domain::UserID Bot::GetOwnerID() const {
 	return config_.owner_id;
 }
 
@@ -140,9 +142,9 @@ void Bot::RegisterCommand(const std::string& name, const TgBot::EventBroadcaster
 	bot_.getEvents().onCommand(name, listener);
 }
 
-TgBot::Message::Ptr Bot::SendMessage(config::ChatID chat_id, const std::string& text,
+TgBot::Message::Ptr Bot::SendMessage(domain::ChatID chat_id, const std::string& text,
 	TgBot::GenericReply::Ptr replyMarkup, const std::string& parseMode, bool disableWebPagePreview,
-	bool protectContent, bool disableNotification, config::ThreadID thread_id) {
+	bool protectContent, bool disableNotification, domain::ThreadID thread_id) {
 
 	return GetAPI().sendMessage(chat_id, text, disableWebPagePreview, 0, std::move(replyMarkup), parseMode, disableNotification, {}, false, protectContent, thread_id);
 }
@@ -150,10 +152,25 @@ TgBot::Message::Ptr Bot::SendMessage(config::ChatID chat_id, const std::string& 
 TgBot::Message::Ptr Bot::SendMessage(const TgBot::Message::Ptr& get_from_message, const std::string& text,
 	TgBot::GenericReply::Ptr replyMarkup, const std::string& parseMode, bool disableWebPagePreview,
 	bool protectContent, bool disableNotification) {
+
 	return SendMessage(get_from_message->chat->id, text, std::move(replyMarkup), parseMode, disableWebPagePreview, protectContent, disableNotification, get_from_message->messageThreadId);
 }
 
-bool Bot::Typing(config::ChatID chat_id) {
+TgBot::Message::Ptr Bot::EditMessage(domain::ChatID chat_id, domain::MessageID message_id, const std::string& text,
+	TgBot::GenericReply::Ptr replyMarkup,
+	const std::string& parseMode, bool disableWebPagePreview) {
+
+	return GetAPI().editMessageText(text, chat_id, message_id, "", parseMode, disableWebPagePreview, std::move(replyMarkup), {});
+}
+
+TgBot::Message::Ptr Bot::EditMessage(const TgBot::Message::Ptr& message_to_edit, const std::string& text,
+	TgBot::GenericReply::Ptr replyMarkup,
+	const std::string& parseMode, bool disableWebPagePreview) {
+
+	return EditMessage(message_to_edit->chat->id, message_to_edit->messageId, text, std::move(replyMarkup), parseMode, disableWebPagePreview);
+}
+
+bool Bot::Typing(domain::ChatID chat_id) {
 	return GetAPI().blockedByUser(chat_id);
 }
 
