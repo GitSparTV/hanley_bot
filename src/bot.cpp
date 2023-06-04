@@ -24,8 +24,12 @@ Bot::Bot(config::Config& config) :
 	dialogs_(*this),
 	config_(config.bot_config) {}
 
+[[nodiscard]] bool Bot::IsOwner(domain::UserID user) const {
+	return user == config_.owner_id;
+}
+
 [[nodiscard]] bool Bot::IsOwner(const TgBot::User::Ptr& user) const {
-	return user->id == config_.owner_id;
+	return IsOwner(user->id);
 }
 
 [[nodiscard]] bool Bot::IsOwner(const TgBot::ChatMember::Ptr& user) const {

@@ -27,6 +27,8 @@ public:
 
 	[[nodiscard]] pqxx::work BeginTransaction();
 
+	[[nodiscard]] bool IsOwner(domain::UserID user) const;
+
 	[[nodiscard]] bool IsOwner(const TgBot::User::Ptr& user) const;
 
 	[[nodiscard]] bool IsOwner(const TgBot::ChatMember::Ptr& user) const;
@@ -53,6 +55,11 @@ public:
 		const std::string& parseMode = "", bool disableWebPagePreview = false,
 		bool protectContent = false, bool disableNotification = false);
 
+	TgBot::Message::Ptr SendMessage(const domain::Context& get_from_context, const std::string& text,
+		TgBot::GenericReply::Ptr replyMarkup = std::make_shared<TgBot::GenericReply>(),
+		const std::string& parseMode = "", bool disableWebPagePreview = false,
+		bool protectContent = false, bool disableNotification = false);
+
 	TgBot::Message::Ptr EditMessage(domain::ChatID chat_id, domain::MessageID message_id, const std::string& text,
 		TgBot::GenericReply::Ptr replyMarkup = std::make_shared<TgBot::GenericReply>(),
 		const std::string& parseMode = "", bool disableWebPagePreview = false);
@@ -61,7 +68,14 @@ public:
 		TgBot::GenericReply::Ptr replyMarkup = std::make_shared<TgBot::GenericReply>(),
 		const std::string& parseMode = "", bool disableWebPagePreview = false);
 
+	TgBot::Message::Ptr EditMessage(const domain::Context& message_to_edit, const std::string& text,
+		TgBot::GenericReply::Ptr replyMarkup = std::make_shared<TgBot::GenericReply>(),
+		const std::string& parseMode = "", bool disableWebPagePreview = false);
+
 	bool Typing(domain::ChatID chat_id);
+
+	void AnswerCallbackQuery(const std::string& query_id, const std::string& text = "",
+		bool show_alert = false, std::int32_t cache_time = 0);
 
 private:
 	TgBot::Bot bot_;
