@@ -29,7 +29,7 @@ enum class Permission {
 };
 
 struct CommandInfo {
-	using Callback = void(*)(Bot&, const TgBot::Message::Ptr&, bool);
+	using Callback = void(*)(Bot&, const domain::Context&);
 
 	std::string_view name;
 	std::string_view description;
@@ -96,16 +96,20 @@ void RegisterUser(Bot& bot, pqxx::work& tx, TgBot::User::Ptr user) {
 	);
 }
 
-void Start(Bot& bot, const TgBot::Message::Ptr& message, bool) {
+void Start(Bot& bot, const domain::Context& context) {
+	if (!context.IsUserCommand() || !context.IsPM()) {
+		return;
+	}
+
 	static constexpr std::string_view kStartCommand = "/start";
 
-	const std::string& text = message->text;
+	const std::string& text = context.message->text;
 
 	pqxx::work tx = bot.BeginTransaction();
 
-	RegisterUser(bot, tx, message->from);
+	RegisterUser(bot, tx, context.message->from);
 
-	bot.SendMessage(message, "Привет!\nЭто бот русскоязычной группы [\"Хенли. ПФА&ТОН\"](t.me/ruspfasbt).\nБот поможет зарегистрироваться на потоки обучения, а если их ещё нет, то подписаться на уведомления на те курсы, что вас интересуют.\nДля тех, кто уже учится на потоке, этот бот поможет вам активировать курс, получать новости группы и другое.\nСписок доступных всем команд есть у вас в меню внизу слева, если не видно, наберите \"/help\".\n\nВ случае неисправностей или вопросов пишите: t.me/savvatelegram.", {}, "Markdown");
+	bot.SendMessage(context.message, "Привет!\nЭто бот русскоязычной группы [\"Хенли. ПФА&ТОН\"](t.me/ruspfasbt).\nБот поможет зарегистрироваться на потоки обучения, а если их ещё нет, то подписаться на уведомления на те курсы, что вас интересуют.\nДля тех, кто уже учится на потоке, этот бот поможет вам активировать курс, получать новости группы и другое.\nСписок доступных всем команд есть у вас в меню внизу слева, если не видно, наберите \"/help\".\n\nВ случае неисправностей или вопросов пишите: t.me/savvatelegram.", {}, "Markdown");
 
 	tx.commit();
 
@@ -119,10 +123,14 @@ void Start(Bot& bot, const TgBot::Message::Ptr& message, bool) {
 		return;
 	}
 
-	CallCommand(bot, std::move(deep_link), message);
+	CallCommand(bot, std::move(deep_link), context);
 }
 
-void GetCourses(Bot& bot, const TgBot::Message::Ptr& message, bool from_command) {
+void GetCourses(Bot& bot, const domain::Context& context) {
+	if (!context.IsPM()) {
+		return;
+	}
+
 	static constexpr std::string_view kHeader = "Про все курсы и процесс сертификации можно почитать <a href=\"https://abasavva.notion.site/4b49aea6d6964c359039545d198ef7a2\">здесь</a>.\n";
 	static constexpr size_t kAverageCourseNameLength = 30 * 2;
 	static constexpr size_t kStartSize = kHeader.size() + kAverageCourseNameLength * 10;
@@ -139,7 +147,7 @@ void GetCourses(Bot& bot, const TgBot::Message::Ptr& message, bool from_command)
 
 	pqxx::work tx = bot.BeginTransaction();
 
-	for (const auto& [id, full_name, is_subscribed] : tx.query<uint64_t, std::string, bool>(std::format("SELECT id, full_name, CASE WHEN subscriptions.course_id IS NOT NULL THEN true ELSE false END AS subscribed FROM courses LEFT JOIN subscriptions ON courses.id = subscriptions.course_id AND subscriptions.telegram_id = {} ORDER BY courses.id ASC", message->from->id))) {
+	for (const auto& [id, full_name, is_subscribed] : tx.query<uint64_t, std::string, bool>(std::format("SELECT id, full_name, CASE WHEN subscriptions.course_id IS NOT NULL THEN true ELSE false END AS subscribed FROM courses LEFT JOIN subscriptions ON courses.id = subscriptions.course_id AND subscriptions.telegram_id = {} ORDER BY courses.id ASC", context.user))) {
 		result += std::format("\n<b>{}.</b> {}{}", id, full_name, is_subscribed ? " <i>(Вы подписаны на уведомления)</i>" : ""sv);
 
 		row.Callback(std::to_string(id), std::format("static_courses_get_{}", id));
@@ -149,16 +157,16 @@ void GetCourses(Bot& bot, const TgBot::Message::Ptr& message, bool from_command)
 		}
 	}
 
-	if (from_command) {
-		bot.SendMessage(message, result, keyboard, "HTML", true);
+	if (context.IsUserCommand()) {
+		bot.SendMessage(context, result, keyboard, "HTML", true);
 	} else {
-		bot.EditMessage(message, result, keyboard, "HTML", true);
+		bot.EditMessage(context, result, keyboard, "HTML", true);
 	}
 
 	tx.commit();
 }
 
-void Test(Bot& bot, const TgBot::Message::Ptr& message, bool from_command) {
+void Test(Bot& bot, const domain::Context& context) {
 	//auto sent = bot.getApi().sendMessage(message->chat->id, "MainCourseForm test");
 
 	//dialogs.Add<dialogs::MainCourseForm>(sent);
@@ -208,7 +216,7 @@ void InitializeCommands(Bot& bot) {
 				return;
 			}
 
-			return callback(bot, message, true);
+			return callback(bot, domain::Context::FromCommand(message));
 		};
 
 		bot.RegisterCommand(std::string(command_info.name), listener);
@@ -240,24 +248,28 @@ std::deque<std::string_view> SplitPath(std::string_view path) {
 }
 
 struct StaticQueryInfo {
-	using Callback = void(*)(Bot&, std::deque<std::string_view>&, const TgBot::Message::Ptr&, const TgBot::User::Ptr&);
+	using Callback = void(*)(Bot&, std::deque<std::string_view>&, const domain::Context&);
 
 	Callback callback;
 	Permission permission;
 };
 
-void GetCourse(Bot& bot, const TgBot::Message::Ptr message_to_edit, domain::UserID user_id, std::string_view course_id) {
+bool ParseNumber(std::string_view text, int& output) {
+	auto status = std::from_chars(text.data(), text.data() + text.size(), output);
+
+	return status.ec == std::errc{};
+}
+
+void GetCourse(Bot& bot, const domain::Context& context, std::string_view course_id) {
 	int course_id_number;
 
-	auto status = std::from_chars(course_id.data(), course_id.data() + course_id.size(), course_id_number);
-
-	if (status.ec != std::errc{}) {
+	if (!ParseNumber(course_id, course_id_number)) {
 		return;
 	}
 
 	auto tx = bot.BeginTransaction();
 
-	auto [full_name, description, url, is_subscribed] = tx.query1<std::string, std::string, std::string, bool>(std::format("SELECT full_name, description, url, CASE WHEN subscriptions.course_id IS NOT NULL THEN true ELSE false END AS subscribed FROM courses LEFT JOIN subscriptions ON courses.id = subscriptions.course_id AND subscriptions.telegram_id = {} WHERE id = {}", user_id, course_id_number));
+	auto [full_name, description, url, is_subscribed] = tx.query1<std::string, std::string, std::string, bool>(std::format("SELECT full_name, description, url, CASE WHEN subscriptions.course_id IS NOT NULL THEN true ELSE false END AS subscribed FROM courses LEFT JOIN subscriptions ON courses.id = subscriptions.course_id AND subscriptions.telegram_id = {} WHERE id = {}", context.user, course_id_number));
 
 	const std::string_view is_subscribed_text = is_subscribed ? "<i>Вы подписаны на новости об этом курсе.</i>" : "<i>Вы можете подписаться на новости об этом курсе ниже.</i>";
 
@@ -275,30 +287,74 @@ void GetCourse(Bot& bot, const TgBot::Message::Ptr message_to_edit, domain::User
 		}
 	};
 
-	bot.EditMessage(message_to_edit, result, keyboard, "HTML");
+	if (context.IsCallback()) {
+		bot.EditMessage(context, result, keyboard, "HTML");
+	} else {
+		bot.SendMessage(context, result, keyboard, "HTML");
+	}
 
 	tx.commit();
 }
 
-void Courses(Bot& bot, std::deque<std::string_view>& path,
-	const TgBot::Message::Ptr& message, const TgBot::User::Ptr& user) {
-
+void Courses(Bot& bot, std::deque<std::string_view>& path, const domain::Context& context) {
 	if (path.front() == "get") {
 		path.pop_front();
 
 		if (path.empty()) {
-			return GetCourses(bot, message, false);
+			return GetCourses(bot, context);
 		}
 
-		GetCourse(bot, message, user->id, path.front());
+		GetCourse(bot, context, path.front());
+	}
+}
+
+void Subscriptions(Bot& bot, std::deque<std::string_view>& path, const domain::Context& context) {
+	const auto verb = path.front();
+
+	path.pop_front();
+
+	const auto course_id = path.front();
+	int course_id_number;
+
+	if (!ParseNumber(course_id, course_id_number)) {
+		return;
+	}
+
+	std::string response;
+
+	auto tx = bot.BeginTransaction();
+
+	const auto full_name = tx.query_value<std::string>(std::format("SELECT full_name FROM courses WHERE id = {}", course_id_number));
+
+	if (verb == "add") {
+		tx.exec0(std::format("INSERT INTO subscriptions (telegram_id, course_id) VALUES ({}, {}) ON CONFLICT DO NOTHING", context.user, course_id_number));
+
+		response = std::format("Вы подписались на новости о курсе \"{}\"", full_name);
+	} else if (verb == "del") {
+		tx.exec0(std::format("DELETE FROM subscriptions WHERE telegram_id = {} AND course_id = {}", context.user, course_id_number));
+
+		response = std::format("Вы больше не будете получать новости о курсе \"{}\"", full_name);
+	} else {
+
+		response = "Ошибка?";
+	}
+
+	if (context.IsCallback()) {
+		bot.AnswerCallbackQuery(std::string(context.query_id), response, true, 2);
+		tx.commit();
+		GetCourse(bot, context, course_id);
+	} else {
+		bot.SendMessage(context, response);
+		tx.commit();
 	}
 }
 
 static const std::unordered_map<std::string_view, StaticQueryInfo> kStaticQueries = {
 	{"courses", {Courses, Permission::kPublic}},
+	{"subs", {Subscriptions, Permission::kPublic}}
 };
 
-void CallCommand(Bot& bot, std::string path, const TgBot::Message::Ptr& message, const TgBot::User::Ptr& user) {
+void CallCommand(Bot& bot, std::string path, const domain::Context& context) {
 	auto split_path = SplitPath(path);
 
 	assert(split_path[0] == "static");
@@ -313,17 +369,13 @@ void CallCommand(Bot& bot, std::string path, const TgBot::Message::Ptr& message,
 
 	const auto& [callback, permission] = entrypoint->second;
 
-	if (permission == Permission::kOwner && bot.IsOwner(user)) {
+	if (permission == Permission::kOwner && bot.IsOwner(context.user)) {
 		return;
 	}
 
 	split_path.pop_front();
 
-	callback(bot, split_path, message, user);
-}
-
-void CallCommand(Bot& bot, std::string path, const TgBot::Message::Ptr& message) {
-	CallCommand(bot, std::move(path), message, message->from);
+	callback(bot, split_path, context);
 }
 
 } // namespace hanley_bot::commands

@@ -1,10 +1,11 @@
 #pragma once
 
-#include <string>
+#include <string_view>
 
 #include <tgbot/types/User.h>
 #include <tgbot/types/Chat.h>
 #include <tgbot/types/Message.h>
+#include <tgbot/types/CallbackQuery.h>
 
 namespace hanley_bot::domain {
 
@@ -21,14 +22,19 @@ enum class InvokeType {
 
 struct Context {
 	static Context FromCommand(const TgBot::Message::Ptr& message);
-	static Context FromCallback(const TgBot::Message::Ptr& message, UserID user_id, const std::string& query_id);
+	static Context FromCallback(const TgBot::CallbackQuery::Ptr& query);
 
-	UserID from = 0;
+	bool IsUserCommand() const;
+	bool IsCallback() const;
+	bool IsCode() const;
+	bool IsPM() const;
+
+	UserID user = 0;
 	ChatID origin = 0;
 	ThreadID origin_thread = 0;
-	MessageID message = 0;
-	std::string content;
 	InvokeType type = InvokeType::kUserCommand;
+	TgBot::Message::Ptr message;
+	std::string_view query_id;
 };
 
 } // namespace hanley_bot::domain

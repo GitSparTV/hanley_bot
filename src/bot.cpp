@@ -78,14 +78,14 @@ void Bot::Run() {
 
 		try {
 			if (query->data.starts_with("static_")) {
-				commands::CallCommand(*this, query->data, query->message);
+				commands::CallCommand(*this, query->data, domain::Context::FromCallback(query));
 			} else {
 				dialogs_.HandleCallback(query->message, query->data);
 			}
 
-			GetAPI().answerCallbackQuery(query->id);
+			AnswerCallbackQuery(query->id);
 		} catch (const TgBot::TgException& ex) {
-			GetAPI().answerCallbackQuery(query->id, "Произошла ошибка при выполнении запроса. Если ошибка повторяется, напишите владельцу", true, "", 15);
+			AnswerCallbackQuery(query->id, "Произошла ошибка при выполнении запроса. Если ошибка повторяется, напишите владельцу", true, 15);
 
 			std::cout << "onCallbackQuery expection: " << ex.what() << std::endl;
 		}
@@ -153,6 +153,13 @@ TgBot::Message::Ptr Bot::SendMessage(domain::ChatID chat_id, const std::string& 
 	return GetAPI().sendMessage(chat_id, text, disableWebPagePreview, 0, std::move(replyMarkup), parseMode, disableNotification, {}, false, protectContent, thread_id);
 }
 
+TgBot::Message::Ptr Bot::SendMessage(const domain::Context& get_from_context, const std::string& text,
+	TgBot::GenericReply::Ptr replyMarkup, const std::string& parseMode, bool disableWebPagePreview,
+	bool protectContent, bool disableNotification) {
+
+	return SendMessage(get_from_context.origin, text, std::move(replyMarkup), parseMode, disableWebPagePreview, protectContent, disableNotification, get_from_context.origin_thread);
+}
+
 TgBot::Message::Ptr Bot::SendMessage(const TgBot::Message::Ptr& get_from_message, const std::string& text,
 	TgBot::GenericReply::Ptr replyMarkup, const std::string& parseMode, bool disableWebPagePreview,
 	bool protectContent, bool disableNotification) {
@@ -174,8 +181,28 @@ TgBot::Message::Ptr Bot::EditMessage(const TgBot::Message::Ptr& message_to_edit,
 	return EditMessage(message_to_edit->chat->id, message_to_edit->messageId, text, std::move(replyMarkup), parseMode, disableWebPagePreview);
 }
 
+TgBot::Message::Ptr Bot::EditMessage(const domain::Context& message_to_edit, const std::string& text,
+	TgBot::GenericReply::Ptr replyMarkup,
+	const std::string& parseMode, bool disableWebPagePreview) {
+
+	return EditMessage(message_to_edit.message, text, std::move(replyMarkup), parseMode, disableWebPagePreview);
+}
+
 bool Bot::Typing(domain::ChatID chat_id) {
 	return GetAPI().blockedByUser(chat_id);
+}
+
+void Bot::AnswerCallbackQuery(const std::string& query_id, const std::string& text,
+	bool show_alert, std::int32_t cache_time) {
+	static std::string last_query_id;
+
+	if (last_query_id == query_id) {
+		return;
+	}
+
+	last_query_id = query_id;
+
+	GetAPI().answerCallbackQuery(query_id, text, show_alert, "", cache_time);
 }
 
 
