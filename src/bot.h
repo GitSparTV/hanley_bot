@@ -10,6 +10,8 @@
 #include <tgbot/Bot.h>
 #include <tgbot/EventBroadcaster.h>
 
+#undef SendMessage
+
 #include "states_controller.h"
 #include "config.h"
 

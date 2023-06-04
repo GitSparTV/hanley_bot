@@ -14,6 +14,8 @@ add_executable(hanley_bot
 	src/main.cpp
 	src/logging.cpp
 	src/logging.h
+	src/domain.cpp
+	src/domain.h
 	src/tg_utils.cpp
 	src/tg_utils.h
 	src/tg_debug.cpp

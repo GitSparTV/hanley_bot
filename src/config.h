@@ -2,15 +2,9 @@
 
 #include <string>
 
-#include <tgbot/types/User.h>
-#include <tgbot/types/Chat.h>
-#include <tgbot/types/Message.h>
+#include "domain.h"
 
 namespace hanley_bot::config {
-
-using UserID = decltype(TgBot::User::id);
-using ChatID = decltype(TgBot::Chat::id);
-using ThreadID = decltype(TgBot::Message::messageThreadId);
 
 struct BotCredentials {
 	std::string bot_token;
@@ -18,10 +12,10 @@ struct BotCredentials {
 };
 
 struct BotConfig {
-	UserID bot_id;
-	UserID owner_id;
-	ChatID group_id;
-	ThreadID news_thread_id;
+	domain::UserID bot_id;
+	domain::UserID owner_id;
+	domain::ChatID group_id;
+	domain::ThreadID news_thread_id;
 };
 
 struct Config {

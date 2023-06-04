@@ -4,10 +4,10 @@
 #include <memory>
 #include <functional>
 
+#include <tgbot/types/InlineKeyboardButton.h>
 #include <tgbot/types/InlineKeyboardMarkup.h>
-#include <tgbot/types/User.h>
-#include <tgbot/types/ChatMember.h>
-#include <tgbot/types/Message.h>
+#include <tgbot/types/GenericReply.h>
+#include <tgbot/types/Chat.h>
 
 #include "tg_utils.h"
 
