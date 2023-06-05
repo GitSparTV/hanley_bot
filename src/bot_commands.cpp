@@ -83,9 +83,9 @@ void Broadcast(TgBot::Message::Ptr original_message) {
 	//}
 }
 
-void RegisterUser(Bot& bot, pqxx::work& tx, TgBot::User::Ptr user) {
+bool RegisterUser(Bot& bot, pqxx::work& tx, TgBot::User::Ptr user) {
 	if (tx.query_value<bool>(std::format("SELECT EXISTS(SELECT 1 FROM users WHERE telegram_id = {})", user->id))) {
-		return;
+		return false;
 	}
 
 	tx.exec0(
@@ -94,6 +94,8 @@ void RegisterUser(Bot& bot, pqxx::work& tx, TgBot::User::Ptr user) {
 			tx.esc(user->firstName),
 			tx.esc(user->lastName))
 	);
+
+	return true;
 }
 
 void Start(Bot& bot, const domain::Context& context) {
@@ -105,15 +107,19 @@ void Start(Bot& bot, const domain::Context& context) {
 
 	const std::string& text = context.message->text;
 
-	pqxx::work tx = bot.BeginTransaction();
+	bool has_deep_link = text.size() <= kStartCommand.size();
 
-	RegisterUser(bot, tx, context.message->from);
+	auto& tx = bot.BeginTransaction();
 
-	bot.SendMessage(context.message, "Привет!\nЭто бот русскоязычной группы [\"Хенли. ПФА&ТОН\"](t.me/ruspfasbt).\nБот поможет зарегистрироваться на потоки обучения, а если их ещё нет, то подписаться на уведомления на те курсы, что вас интересуют.\nДля тех, кто уже учится на потоке, этот бот поможет вам активировать курс, получать новости группы и другое.\nСписок доступных всем команд есть у вас в меню внизу слева, если не видно, наберите \"/help\".\n\nВ случае неисправностей или вопросов пишите: t.me/savvatelegram.", {}, "Markdown");
+	bool already_registered = RegisterUser(bot, tx, context.message->from);
+
+	if (!already_registered || (already_registered && has_deep_link)) {
+		bot.SendMessage(context.message, "Привет!\nЭто бот русскоязычной группы [\"Хенли. ПФА&ТОН\"](t.me/ruspfasbt).\nБот поможет зарегистрироваться на потоки обучения, а если их ещё нет, то подписаться на уведомления на те курсы, что вас интересуют.\nДля тех, кто уже учится на потоке, этот бот поможет вам активировать курс, получать новости группы и другое.\nСписок доступных всем команд есть у вас в меню внизу слева, если не видно, наберите \"/help\".\n\nВ случае неисправностей или вопросов пишите: t.me/savvatelegram.", {}, "Markdown");
+	}
 
 	tx.commit();
 
-	if (text.size() <= kStartCommand.size()) {
+	if (has_deep_link) {
 		return;
 	}
 
@@ -145,7 +151,7 @@ void GetCourses(Bot& bot, const domain::Context& context) {
 	static constexpr int kButtonsPerRow = 3;
 	auto row = keyboard.Row();
 
-	pqxx::work tx = bot.BeginTransaction();
+	auto& tx = bot.BeginTransaction();
 
 	for (const auto& [id, full_name, is_subscribed] : tx.query<uint64_t, std::string, bool>(std::format("SELECT id, full_name, CASE WHEN subscriptions.course_id IS NOT NULL THEN true ELSE false END AS subscribed FROM courses LEFT JOIN subscriptions ON courses.id = subscriptions.course_id AND subscriptions.telegram_id = {} ORDER BY courses.id ASC", context.user))) {
 		result += std::format("\n<b>{}.</b> {}{}", id, full_name, is_subscribed ? " <i>(Вы подписаны на уведомления)</i>" : ""sv);
@@ -175,7 +181,7 @@ void Test(Bot& bot, const domain::Context& context) {
 static const std::vector<CommandInfo> kCommands = {
 	{"start", "Начать разговор", Start, Permission::kPublicHidden},
 	{"courses", "Список курсов на русском языке от FTF", GetCourses, Permission::kPublic},
-	{"test", "Тест", Test, Permission::kPublicHidden}
+	{"test", "Тест", Test, Permission::kOwner}
 };
 
 void PushCommands(Bot& bot) {
@@ -216,7 +222,9 @@ void InitializeCommands(Bot& bot) {
 				return;
 			}
 
-			return callback(bot, domain::Context::FromCommand(message));
+			callback(bot, domain::Context::FromCommand(message));
+
+			bot.EndTransaction();
 		};
 
 		bot.RegisterCommand(std::string(command_info.name), listener);
@@ -267,7 +275,7 @@ void GetCourse(Bot& bot, const domain::Context& context, std::string_view course
 		return;
 	}
 
-	auto tx = bot.BeginTransaction();
+	auto& tx = bot.BeginTransaction();
 
 	auto [full_name, description, url, is_subscribed] = tx.query1<std::string, std::string, std::string, bool>(std::format("SELECT full_name, description, url, CASE WHEN subscriptions.course_id IS NOT NULL THEN true ELSE false END AS subscribed FROM courses LEFT JOIN subscriptions ON courses.id = subscriptions.course_id AND subscriptions.telegram_id = {} WHERE id = {}", context.user, course_id_number));
 
@@ -322,7 +330,7 @@ void Subscriptions(Bot& bot, std::deque<std::string_view>& path, const domain::C
 
 	std::string response;
 
-	auto tx = bot.BeginTransaction();
+	auto& tx = bot.BeginTransaction();
 
 	const auto full_name = tx.query_value<std::string>(std::format("SELECT full_name FROM courses WHERE id = {}", course_id_number));
 
@@ -341,10 +349,13 @@ void Subscriptions(Bot& bot, std::deque<std::string_view>& path, const domain::C
 
 	if (context.IsCallback()) {
 		bot.AnswerCallbackQuery(std::string(context.query_id), response, true, 2);
+
 		tx.commit();
+
 		GetCourse(bot, context, course_id);
 	} else {
 		bot.SendMessage(context, response);
+
 		tx.commit();
 	}
 }
