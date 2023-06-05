@@ -1,9 +1,10 @@
 #include <format>
-#include <iostream>
 #include <string>
 #include <unordered_map>
+#include <sstream>
 
 #include <tgbot/types/Message.h>
+#include <tgbot/types/MessageEntity.h>
 #include <tgbot/types/CallbackQuery.h>
 
 #include "tg_debug.h"
@@ -33,7 +34,7 @@ static const std::unordered_map<TgBot::MessageEntity::Type, std::string_view> kM
 	{TgBot::MessageEntity::Type::CustomEmoji, "CustomEmoji"sv}
 };
 
-void DumpMessage(std::ostream& out, TgBot::Message::Ptr message) {
+std::string DumpMessage(TgBot::Message::Ptr message) {
 	std::vector<std::string> attributes;
 	attributes.reserve(58);
 
@@ -177,6 +178,8 @@ void DumpMessage(std::ostream& out, TgBot::Message::Ptr message) {
 		attributes.emplace_back(std::format("replyMarkup[{}]", message->replyMarkup->inlineKeyboard.size()));
 	}
 
+	std::ostringstream out;
+
 	out << "Message["sv << message->messageId << "] in ["sv << message->chat->id << "]->["sv << (message->senderChat ? message->senderChat->id : 0) << "]->["sv << message->messageThreadId << "] ("sv << (hanley_bot::tg::utils::IsPM(message->chat) ? "private"sv : "group"sv) << ") from ["sv << message->from->id << "]. "sv << std::max(message->text.size(), message->caption.size()) << " characters. ["sv;
 
 	bool is_first = true;
@@ -191,9 +194,13 @@ void DumpMessage(std::ostream& out, TgBot::Message::Ptr message) {
 	}
 
 	out << "]"sv;
+
+	return std::move(out).str();
 }
 
-void DumpCallbackQuery(std::ostream& out, TgBot::CallbackQuery::Ptr query) {
+std::string DumpCallbackQuery(TgBot::CallbackQuery::Ptr query) {
+	std::ostringstream out;
+
 	out << "CallbackQuery["sv << query->id << "] in "sv << query->chatInstance << " from "sv << query->from->id << ", data: "sv << query->data;
 
 	if (!query->inlineMessageId.empty()) {
@@ -204,8 +211,11 @@ void DumpCallbackQuery(std::ostream& out, TgBot::CallbackQuery::Ptr query) {
 		out << ", gameName: "sv << query->gameShortName;
 	}
 
-	out << "\n\t[REFERENCE] ";
-	DumpMessage(out, query->message);
+	out << "\t[REFERENCE] ";
+
+	out << DumpMessage(query->message);
+
+	return std::move(out).str();
 }
 
 } // namespace hanley_bot::tg::debug
