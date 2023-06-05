@@ -1,8 +1,8 @@
-#include <format>
 #include <string>
 #include <unordered_map>
 #include <sstream>
 
+#include <fmt/core.h>
 #include <tgbot/types/Message.h>
 #include <tgbot/types/MessageEntity.h>
 #include <tgbot/types/CallbackQuery.h>
@@ -44,31 +44,31 @@ std::string DumpMessage(const TgBot::Message::Ptr& message) {
 
 	auto emplace_func = [&attributes](std::string_view name, const auto& attribute, const auto& method) {
 		if (attribute) {
-			attributes.emplace_back(std::format("{}[{}]", name, std::invoke(method, *attribute)));
+			attributes.emplace_back(fmt::format("{}[{}]", name, std::invoke(method, *attribute)));
 		}
 	};
 
 	auto emplace_self = [&attributes](std::string_view name, const auto& attribute) {
 		if (attribute) {
-			attributes.emplace_back(std::format("{}[{}]", name, attribute));
+			attributes.emplace_back(fmt::format("{}[{}]", name, attribute));
 		}
 	};
 
 	auto emplace_name = [&attributes](std::string_view name, const auto& attribute) {
 		if (attribute) {
-			attributes.emplace_back(std::format("{}", name));
+			attributes.emplace_back(fmt::format("{}", name));
 		}
 	};
 
 	auto emplace_non_empty = [&attributes](std::string_view name, const auto& attribute) {
 		if (!attribute.empty()) {
-			attributes.emplace_back(std::format("{}[{}]", name, attribute));
+			attributes.emplace_back(fmt::format("{}[{}]", name, attribute));
 		}
 	};
 
 	auto emplace_size = [&attributes](std::string_view name, const auto& attribute) {
 		if (!attribute.empty()) {
-			attributes.emplace_back(std::format("{}[size:{}]", name, attribute.size()));
+			attributes.emplace_back(fmt::format("{}[size:{}]", name, attribute.size()));
 		}
 	};
 
@@ -141,7 +141,7 @@ std::string DumpMessage(const TgBot::Message::Ptr& message) {
 	emplace_func("contact", message->contact, &std::decay_t<decltype(*message->contact)>::phoneNumber);
 
 	if (message->dice) {
-		attributes.emplace_back(std::format("dice[{}:{}]", message->dice->emoji, message->dice->value));
+		attributes.emplace_back(fmt::format("dice[{}:{}]", message->dice->emoji, message->dice->value));
 	}
 
 	emplace_func("game", message->game, &std::decay_t<decltype(*message->game)>::title);
@@ -149,7 +149,7 @@ std::string DumpMessage(const TgBot::Message::Ptr& message) {
 	emplace_func("venue", message->venue, &std::decay_t<decltype(*message->venue)>::title);
 
 	if (message->location) {
-		attributes.emplace_back(std::format("location[{}, {}]", message->location->latitude, message->location->longitude));
+		attributes.emplace_back(fmt::format("location[{}, {}]", message->location->latitude, message->location->longitude));
 	}
 
 	emplace_size("newChatMembers", message->newChatMembers);
@@ -179,7 +179,7 @@ std::string DumpMessage(const TgBot::Message::Ptr& message) {
 	emplace_name("webAppData", message->webAppData);
 
 	if (message->replyMarkup) {
-		attributes.emplace_back(std::format("replyMarkup[{}]", message->replyMarkup->inlineKeyboard.size()));
+		attributes.emplace_back(fmt::format("replyMarkup[{}]", message->replyMarkup->inlineKeyboard.size()));
 	}
 
 	std::ostringstream out;
@@ -229,7 +229,7 @@ static const std::unordered_map<hanley_bot::domain::InvokeType, std::string_view
 };
 
 std::string DumpContext(const hanley_bot::domain::Context& context) {
-	return std::format("Context[{}] user={}, origin={}, thread={}, query_id={}, message={}",
+	return fmt::format("Context[{}] user={}, origin={}, thread={}, query_id={}, message={}",
 		kInvokeTypeSerialized.at(context.type),
 		context.user,
 		context.origin,

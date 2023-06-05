@@ -2,6 +2,7 @@
 boost/1.79.0
 tgbot/1.5
 libpqxx/7.7.5
+fmt/10.0.0
 
 [generators]
 cmake_multi

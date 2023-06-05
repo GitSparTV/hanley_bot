@@ -5,8 +5,8 @@
 #include <string>
 #include <vector>
 #include <deque>
-#include <format>
 
+#include <fmt/core.h>
 #include <tgbot/types/BotCommand.h>
 #include <tgbot/types/Message.h>
 #include <tgbot/types/BotCommandScopeChat.h>
@@ -51,11 +51,11 @@ TgBot::BotCommand::Ptr MakeCommand(std::string_view name, std::string_view descr
 void RemoveUser(uint64_t user_id) {
 	//pqxx::work tx{c};
 
-	//tx.exec0(std::format("DELETE FROM users WHERE telegram_id = {}", user_id));
+	//tx.exec0(fmt::format("DELETE FROM users WHERE telegram_id = {}", user_id));
 
 	//tx.commit();
 
-	//std::cout << std::format("Removing user {} because he blocked the bot", user_id) << std::endl;
+	//std::cout << fmt::format("Removing user {} because he blocked the bot", user_id) << std::endl;
 }
 
 void Broadcast(TgBot::Message::Ptr original_message) {
@@ -86,14 +86,14 @@ void Broadcast(TgBot::Message::Ptr original_message) {
 }
 
 bool RegisterUser(Bot& bot, pqxx::work& tx, TgBot::User::Ptr user) {
-	if (tx.query_value<bool>(std::format("SELECT EXISTS(SELECT 1 FROM users WHERE telegram_id = {})", user->id))) {
+	if (tx.query_value<bool>(fmt::format("SELECT EXISTS(SELECT 1 FROM users WHERE telegram_id = {})", user->id))) {
 		LOG_VERBOSE(debug) << "User " << user->id << " already registered";
 
 		return false;
 	}
 
 	tx.exec0(
-		std::format("INSERT INTO users (telegram_id, first_name, last_name) VALUES ({}, '{}', NULLIF('{}','')) ON CONFLICT (telegram_id) DO UPDATE SET first_name = excluded.first_name, last_name = excluded.last_name;",
+		fmt::format("INSERT INTO users (telegram_id, first_name, last_name) VALUES ({}, '{}', NULLIF('{}','')) ON CONFLICT (telegram_id) DO UPDATE SET first_name = excluded.first_name, last_name = excluded.last_name;",
 			user->id,
 			tx.esc(user->firstName),
 			tx.esc(user->lastName))
@@ -164,10 +164,10 @@ void GetCourses(Bot& bot, const domain::Context& context) {
 
 	auto& tx = bot.BeginTransaction();
 
-	for (const auto& [id, full_name, is_subscribed] : tx.query<uint64_t, std::string, bool>(std::format("SELECT id, full_name, CASE WHEN subscriptions.course_id IS NOT NULL THEN true ELSE false END AS subscribed FROM courses LEFT JOIN subscriptions ON courses.id = subscriptions.course_id AND subscriptions.telegram_id = {} ORDER BY courses.id ASC", context.user))) {
-		result += std::format("\n<b>{}.</b> {}{}", id, full_name, is_subscribed ? " <i>(Вы подписаны на уведомления)</i>" : ""sv);
+	for (const auto& [id, full_name, is_subscribed] : tx.query<uint64_t, std::string, bool>(fmt::format("SELECT id, full_name, CASE WHEN subscriptions.course_id IS NOT NULL THEN true ELSE false END AS subscribed FROM courses LEFT JOIN subscriptions ON courses.id = subscriptions.course_id AND subscriptions.telegram_id = {} ORDER BY courses.id ASC", context.user))) {
+		result += fmt::format("\n<b>{}.</b> {}{}", id, full_name, is_subscribed ? " <i>(Вы подписаны на уведомления)</i>" : ""sv);
 
-		row.Callback(std::to_string(id), std::format("static_courses_get_{}", id));
+		row.Callback(std::to_string(id), fmt::format("static_courses_get_{}", id));
 
 		if (id % kButtonsPerRow == 0) {
 			row = keyboard.Row();
@@ -196,7 +196,7 @@ void Help(Bot& bot, const domain::Context& context) {
 
 	for (const auto& command : kCommands) {
 		if (command.permission == Permission::kPublic || bot.IsOwner(context.user)) {
-			result += std::format("/{} — {}\n", command.name, command.description);
+			result += fmt::format("/{} — {}\n", command.name, command.description);
 		}
 	}
 
@@ -248,7 +248,7 @@ void InitializeCommands(Bot& bot) {
 	for (const auto& command_info : kCommands) {
 		auto listener = [&bot, &command_info]
 		(TgBot::Message::Ptr message) {
-			LOG(info) << std::format("User {} invoked /{} in {}", message->from->id, command_info.name, message->chat->id);
+			LOG(info) << fmt::format("User {} invoked /{} in {}", message->from->id, command_info.name, message->chat->id);
 
 			if (command_info.permission == commands::Permission::kOwner && !bot.IsOwner(message)) {
 				LOG_VERBOSE(warning) << "Access denied. " << tg::debug::DumpMessage(message);
@@ -313,13 +313,13 @@ void GetCourse(Bot& bot, const domain::Context& context, std::string_view course
 
 	auto& tx = bot.BeginTransaction();
 
-	auto [full_name, description, url, is_subscribed] = tx.query1<std::string, std::string, std::string, bool>(std::format("SELECT full_name, description, url, CASE WHEN subscriptions.course_id IS NOT NULL THEN true ELSE false END AS subscribed FROM courses LEFT JOIN subscriptions ON courses.id = subscriptions.course_id AND subscriptions.telegram_id = {} WHERE id = {}", context.user, course_id_number));
+	auto [full_name, description, url, is_subscribed] = tx.query1<std::string, std::string, std::string, bool>(fmt::format("SELECT full_name, description, url, CASE WHEN subscriptions.course_id IS NOT NULL THEN true ELSE false END AS subscribed FROM courses LEFT JOIN subscriptions ON courses.id = subscriptions.course_id AND subscriptions.telegram_id = {} WHERE id = {}", context.user, course_id_number));
 
 	const std::string_view is_subscribed_text = is_subscribed ? "<i>Вы подписаны на новости об этом курсе.</i>" : "<i>Вы можете подписаться на новости об этом курсе ниже.</i>";
 
-	LOG_VERBOSE(debug) << std::format("GetCourse: course={}, user={}, is_subscribed={}", full_name, context.user, is_subscribed);
+	LOG_VERBOSE(debug) << fmt::format("GetCourse: course={}, user={}, is_subscribed={}", full_name, context.user, is_subscribed);
 
-	std::string result = std::format("<b>{}</b>\n\n{}\n{}", full_name, description, is_subscribed_text);
+	std::string result = fmt::format("<b>{}</b>\n\n{}\n{}", full_name, description, is_subscribed_text);
 
 	tg::utils::MakeKeyboard keyboard{
 		{
@@ -329,7 +329,7 @@ void GetCourse(Bot& bot, const domain::Context& context, std::string_view course
 		{
 			{tg::utils::ButtonType::kCallback,
 			is_subscribed ? "Отписаться от новостей" : "Подписаться на новости",
-			std::format("static_subs_{}_{}", is_subscribed ? "del" : "add", course_id)}
+			fmt::format("static_subs_{}_{}", is_subscribed ? "del" : "add", course_id)}
 		}
 	};
 
@@ -372,22 +372,22 @@ void Subscriptions(Bot& bot, std::deque<std::string_view>& path, const domain::C
 
 	auto& tx = bot.BeginTransaction();
 
-	const auto full_name = tx.query_value<std::string>(std::format("SELECT full_name FROM courses WHERE id = {}", course_id_number));
+	const auto full_name = tx.query_value<std::string>(fmt::format("SELECT full_name FROM courses WHERE id = {}", course_id_number));
 
 	if (verb == "add") {
-		tx.exec0(std::format("INSERT INTO subscriptions (telegram_id, course_id) VALUES ({}, {}) ON CONFLICT DO NOTHING", context.user, course_id_number));
+		tx.exec0(fmt::format("INSERT INTO subscriptions (telegram_id, course_id) VALUES ({}, {}) ON CONFLICT DO NOTHING", context.user, course_id_number));
 
-		response = std::format("Вы подписались на новости о курсе \"{}\"", full_name);
+		response = fmt::format("Вы подписались на новости о курсе \"{}\"", full_name);
 
-		LOG_VERBOSE(info) << std::format("Subscribed {} to {}", context.user, course_id);
+		LOG_VERBOSE(info) << fmt::format("Subscribed {} to {}", context.user, course_id);
 	} else if (verb == "del") {
-		tx.exec0(std::format("DELETE FROM subscriptions WHERE telegram_id = {} AND course_id = {}", context.user, course_id_number));
+		tx.exec0(fmt::format("DELETE FROM subscriptions WHERE telegram_id = {} AND course_id = {}", context.user, course_id_number));
 
-		response = std::format("Вы больше не будете получать новости о курсе \"{}\"", full_name);
+		response = fmt::format("Вы больше не будете получать новости о курсе \"{}\"", full_name);
 
-		LOG_VERBOSE(info) << std::format("Unsubscribed {} from {}", context.user, course_id);
+		LOG_VERBOSE(info) << fmt::format("Unsubscribed {} from {}", context.user, course_id);
 	} else {
-		LOG_VERBOSE(error) << std::format("Subscriptions: Unknown verb ({}) {}", verb, tg::debug::DumpContext(context));
+		LOG_VERBOSE(error) << fmt::format("Subscriptions: Unknown verb ({}) {}", verb, tg::debug::DumpContext(context));
 
 		response = "Ошибка. Напишите владельцу.";
 	}
@@ -414,14 +414,14 @@ void CallCommand(Bot& bot, std::string path, const domain::Context& context) {
 	auto split_path = SplitPath(path);
 
 	assert(split_path[0] == "static");
-	LOG_VERBOSE(info) << std::format("Command invoked: {}", path);
+	LOG_VERBOSE(info) << fmt::format("Command invoked: {}", path);
 
 	split_path.pop_front();
 
 	const auto entrypoint = kStaticQueries.find(split_path.front());
 
 	if (entrypoint == std::end(kStaticQueries)) {
-		LOG_VERBOSE(error) << std::format("Unknown entrypoint {} (full path: {})", split_path.front(), path);
+		LOG_VERBOSE(error) << fmt::format("Unknown entrypoint {} (full path: {})", split_path.front(), path);
 
 		return;
 	}
@@ -429,7 +429,7 @@ void CallCommand(Bot& bot, std::string path, const domain::Context& context) {
 	const auto& [callback, permission] = entrypoint->second;
 
 	if (permission == Permission::kOwner && bot.IsOwner(context.user)) {
-		LOG_VERBOSE(warning) << std::format("Access denied. path={} context={}", path, tg::debug::DumpContext(context));
+		LOG_VERBOSE(warning) << fmt::format("Access denied. path={} context={}", path, tg::debug::DumpContext(context));
 
 		return;
 	}

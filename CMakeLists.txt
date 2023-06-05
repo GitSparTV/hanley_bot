@@ -38,5 +38,5 @@ add_executable(hanley_bot
 	src/main_course_form.cpp
 	src/main_course_form.h
 	)
-target_include_directories(hanley_bot PRIVATE CONAN_PKG::tgbot CONAN_PKG::boost CONAN_PKG::libpqxx)
-target_link_libraries(hanley_bot PRIVATE CONAN_PKG::tgbot CONAN_PKG::boost CONAN_PKG::libpqxx)
+target_include_directories(hanley_bot PRIVATE CONAN_PKG::tgbot CONAN_PKG::boost CONAN_PKG::libpqxx CONAN_PKG::fmt)
+target_link_libraries(hanley_bot PRIVATE CONAN_PKG::tgbot CONAN_PKG::boost CONAN_PKG::libpqxx CONAN_PKG::fmt)
