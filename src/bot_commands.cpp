@@ -141,7 +141,7 @@ void Start(Bot& bot, const domain::Context& context) {
 
 	tx.commit();
 
-	if (!deep_link.empty()) {
+	if (deep_link.empty()) {
 		LOG_VERBOSE(debug) << "No deep link";
 		return;
 	}
