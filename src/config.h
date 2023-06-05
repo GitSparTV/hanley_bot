@@ -21,6 +21,7 @@ struct BotConfig {
 struct Config {
 	BotCredentials credentials;
 	BotConfig bot_config;
+	std::string log_folder;
 };
 
 } // namespace hanley_bot::config
