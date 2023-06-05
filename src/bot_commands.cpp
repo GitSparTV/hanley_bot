@@ -129,7 +129,7 @@ void Start(Bot& bot, const domain::Context& context) {
 	auto& tx = bot.BeginTransaction();
 	bool already_registered = RegisterUser(bot, tx, context.message->from);
 
-	if (!already_registered || (already_registered && has_deep_link)) {
+	if (!already_registered || (already_registered && !has_deep_link)) {
 		bot.SendMessage(context.message, "Привет!\nЭто бот русскоязычной группы [\"Хенли. ПФА&ТОН\"](t.me/ruspfasbt).\nБот поможет зарегистрироваться на потоки обучения, а если их ещё нет, то подписаться на уведомления на те курсы, что вас интересуют.\nДля тех, кто уже учится на потоке, этот бот поможет вам активировать курс, получать новости группы и другое.\nСписок доступных всем команд есть у вас в меню внизу слева, если не видно, наберите \"/help\".\n\nВ случае неисправностей или вопросов пишите: t.me/savvatelegram.", {}, "Markdown");
 	}
 
