@@ -210,7 +210,7 @@ void Help(Bot& bot, const domain::Context& context) {
 		}
 	}
 
-	bot.SendMessage(context, result, {}, "Markdown");
+	bot.SendMessage(context, result, {}, "Markdown", true);
 }
 
 void Test(Bot& bot, const domain::Context& context) {
