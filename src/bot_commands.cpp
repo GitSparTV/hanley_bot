@@ -130,23 +130,21 @@ void Start(Bot& bot, const domain::Context& context) {
 	static constexpr std::string_view kStartCommand = "/start";
 
 	const std::string& text = context.message->text;
-	bool has_deep_link = text.size() <= kStartCommand.size();
+	auto deep_link = GetCommandArgument(text);
 
 	auto& tx = bot.BeginTransaction();
 	bool already_registered = RegisterUser(bot, tx, context.message->from);
 
-	if (!already_registered || (already_registered && !has_deep_link)) {
+	if (!already_registered || (already_registered && deep_link.empty())) {
 		bot.SendMessage(context.message, "Привет!\nЭто бот русскоязычной группы [\"Хенли. ПФА&ТОН\"](t.me/ruspfasbt).\nБот поможет зарегистрироваться на потоки обучения, а если их ещё нет, то подписаться на уведомления на те курсы, что вас интересуют.\nДля тех, кто уже учится на потоке, этот бот поможет вам активировать курс, получать новости группы и другое.\nСписок доступных всем команд есть у вас в меню внизу слева, если не видно, наберите \"/help\".\n\nВ случае неисправностей или вопросов пишите: t.me/savvatelegram.", {}, "Markdown");
 	}
 
 	tx.commit();
 
-	if (has_deep_link) {
+	if (!deep_link.empty()) {
 		LOG_VERBOSE(debug) << "No deep link";
 		return;
 	}
-
-	auto deep_link = text.substr(kStartCommand.size() + 1);
 
 	if (!deep_link.starts_with("static")) {
 		LOG_VERBOSE(warning) << "Deep link doesn't start with word \"static\". Content: " << text;
@@ -154,7 +152,7 @@ void Start(Bot& bot, const domain::Context& context) {
 		return;
 	}
 
-	CallCommand(bot, std::move(deep_link), context);
+	CallCommand(bot, std::string(deep_link), context);
 }
 
 void GetCourses(Bot& bot, const domain::Context& context) {
