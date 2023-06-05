@@ -69,7 +69,7 @@ static const std::unordered_map<int, std::string_view> kSignalsSerialized = {
 
 [[noreturn]] void SignalHandler(int signal) {
 	LOG_VERBOSE(fatal) << "Singal "
-		<< (kSignalsSerialized.count(signal) : kSignalsSerialized.at(signal) || std::to_string(signal))
+		<< (kSignalsSerialized.count(signal) ? kSignalsSerialized.at(signal) : std::to_string(signal))
 		<< " was caught!";
 
 	exit(signal);
