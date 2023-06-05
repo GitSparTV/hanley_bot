@@ -57,7 +57,7 @@ void ChangeSeverityFilter(std::string_view name) {
 	);
 }
 
-void SignalHandler(int signal) {
+[[noreturn]] void SignalHandler(int signal) {
 	LOG_VERBOSE(fatal) << "Singal " << signal << " was caught!";
 
 	exit(signal);
