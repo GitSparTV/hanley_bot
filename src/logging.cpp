@@ -1,6 +1,4 @@
-#ifdef WIN32
-#include <sdkddkver.h>
-#endif
+#include "sdk.h"
 
 #include <boost/log/core.hpp>
 #include <boost/log/trivial.hpp>

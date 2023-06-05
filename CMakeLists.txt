@@ -12,6 +12,7 @@ add_compile_definitions(_SILENCE_CXX20_CISO646_REMOVED_WARNING)
 
 add_executable(hanley_bot
 	src/main.cpp
+	src/sdk.h
 	src/logging.cpp
 	src/logging.h
 	src/domain.cpp
@@ -25,6 +26,8 @@ add_executable(hanley_bot
 	src/bot_commands.cpp
 	src/bot_commands.h
 	src/config.h
+	src/config_json_reader.cpp
+	src/config_json_reader.h
 	src/state_machine.cpp
 	src/state_machine.h
 	src/state_base.h

@@ -1,6 +1,4 @@
-#ifdef WIN32
-#include <sdkddkver.h>
-#endif
+#include "sdk.h"
 
 #include <chrono>
 #include <thread>
