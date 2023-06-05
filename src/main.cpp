@@ -5,7 +5,7 @@
 
 int main(int argc, char* argv[]) {
 	hanley_bot::logger::InitConsole();
-	hanley_bit::logger::HookSignals();
+	hanley_bot::logger::HookSignals();
 
 	std::vector<std::string_view> args(argv + 1, argv + argc);
 
