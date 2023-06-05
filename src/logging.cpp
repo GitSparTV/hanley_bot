@@ -1,6 +1,7 @@
 #include "sdk.h"
 
 #include <csignal>
+#include <string_view>
 
 #include <boost/json.hpp>
 #include <boost/log/core.hpp>
@@ -57,8 +58,19 @@ void ChangeSeverityFilter(std::string_view name) {
 	);
 }
 
+static const std::unordered_map<int, std::string_view> kSignalsSerialized = {
+	{SIGTERM, "SIGTERM"},
+	{SIGSEGV, "SIGSEGV"},
+	{SIGINT, "SIGINT"},
+	{SIGILL, "SIGILL"},
+	{SIGABRT, "SIGABRT"},
+	{SIGFPE, "SIGFPE"}
+};
+
 [[noreturn]] void SignalHandler(int signal) {
-	LOG_VERBOSE(fatal) << "Singal " << signal << " was caught!";
+	LOG_VERBOSE(fatal) << "Singal "
+		<< (kSignalsSerialized.count(signal) : kSignalsSerialized.at(signal) || std::to_string(signal))
+		<< " was caught!";
 
 	exit(signal);
 }
