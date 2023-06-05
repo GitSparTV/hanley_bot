@@ -34,7 +34,11 @@ static const std::unordered_map<TgBot::MessageEntity::Type, std::string_view> kM
 	{TgBot::MessageEntity::Type::CustomEmoji, "CustomEmoji"sv}
 };
 
-std::string DumpMessage(TgBot::Message::Ptr message) {
+std::string DumpMessage(const TgBot::Message::Ptr& message) {
+	if (!message) {
+		return "Message[empty]";
+	}
+
 	std::vector<std::string> attributes;
 	attributes.reserve(58);
 
@@ -198,7 +202,7 @@ std::string DumpMessage(TgBot::Message::Ptr message) {
 	return std::move(out).str();
 }
 
-std::string DumpCallbackQuery(TgBot::CallbackQuery::Ptr query) {
+std::string DumpCallbackQuery(const TgBot::CallbackQuery::Ptr& query) {
 	std::ostringstream out;
 
 	out << "CallbackQuery["sv << query->id << "] in "sv << query->chatInstance << " from "sv << query->from->id << ", data: "sv << query->data;
@@ -211,11 +215,28 @@ std::string DumpCallbackQuery(TgBot::CallbackQuery::Ptr query) {
 		out << ", gameName: "sv << query->gameShortName;
 	}
 
-	out << "\t[REFERENCE] ";
+	out << "\t";
 
 	out << DumpMessage(query->message);
 
 	return std::move(out).str();
+}
+
+static const std::unordered_map<hanley_bot::domain::InvokeType, std::string_view> kInvokeTypeSerialized = {
+	{hanley_bot::domain::InvokeType::kUserCommand, "UserCommand"},
+	{hanley_bot::domain::InvokeType::kCallback, "Callback"},
+	{hanley_bot::domain::InvokeType::kCode, "Code"}
+};
+
+std::string DumpContext(const hanley_bot::domain::Context& context) {
+	return std::format("Context[{}] user={}, origin={}, thread={}, query_id={}, message={}",
+		kInvokeTypeSerialized.at(context.type),
+		context.user,
+		context.origin,
+		context.origin_thread,
+		context.query_id,
+		DumpMessage(context.message)
+	);
 }
 
 } // namespace hanley_bot::tg::debug
