@@ -213,7 +213,14 @@ void Help(Bot& bot, const domain::Context& context) {
 	bot.SendMessage(context, result, {}, "Markdown", true);
 }
 
-void Test(Bot& bot, const domain::Context& context) {
+void LogLevel(Bot& bot, const domain::Context& context) {
+	auto severity = GetCommandArgument(context.message->text);
+
+	LOG(warning) << "Severity was changed to " << severity;
+	
+	logger::ChangeSeverityFilter(severity);
+
+	bot.SendMessage(context, fmt::format("Changed severity to {}", severity));
 	//auto sent = bot.getApi().sendMessage(message->chat->id, "MainCourseForm test");
 
 	//dialogs.Add<dialogs::MainCourseForm>(sent);
@@ -223,7 +230,7 @@ const std::vector<CommandInfo> kCommands = {
 	{"start", "Начать разговор", Start, Permission::kPublicHidden},
 	{"help", "Помощь", Help, Permission::kPublic},
 	{"courses", "Список курсов на русском языке от FTF", GetCourses, Permission::kPublic},
-	{"test", "Тест", Test, Permission::kOwner}
+	{"loglevel", "Change Boost.Log severity", LogLevel, Permission::kOwner}
 };
 
 void PushCommands(Bot& bot) {
@@ -305,12 +312,6 @@ struct StaticQueryInfo {
 	Callback callback;
 	Permission permission;
 };
-
-bool ParseNumber(std::string_view text, int& output) {
-	auto status = std::from_chars(text.data(), text.data() + text.size(), output);
-
-	return status.ec == std::errc{};
-}
 
 void GetCourse(Bot& bot, const domain::Context& context, std::string_view course_id) {
 	int course_id_number;

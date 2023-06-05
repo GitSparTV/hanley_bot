@@ -33,6 +33,28 @@ void Format(logging::record_view const& rec, logging::formatting_ostream& strm) 
 }
 namespace keywords = boost::log::keywords;
 
+void ChangeSeverityFilter(std::string_view name) {
+	auto severity = logging::trivial::info;
+
+	if (name == "trace") {
+		severity = logging::trivial::info;
+	} else if (name == "debug") {
+		severity = logging::trivial::debug;
+	} else if (name == "info") {
+		severity = logging::trivial::info;
+	} else if (name == "warning") {
+		severity = logging::trivial::warning;
+	} else if (name == "error") {
+		severity = logging::trivial::error;
+	} else if (name == "fatal") {
+		severity = logging::trivial::fatal;
+	}
+
+	logging::core::get()->set_filter(
+		logging::trivial::severity >= severity
+	);
+}
+
 
 void InitConsole() {
 	logging::add_common_attributes();

@@ -14,6 +14,8 @@ BOOST_LOG_ATTRIBUTE_KEYWORD(file_line, "LineN", int)
 
 namespace hanley_bot::logger {
 
+void ChangeSeverityFilter(std::string_view name);
+
 void InitConsole();
 void InitFile(std::string log_folder);
 
