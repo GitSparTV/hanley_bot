@@ -358,6 +358,12 @@ void GetCourse(Bot& bot, const domain::Context& context, std::string_view course
 }
 
 void Courses(Bot& bot, std::deque<std::string_view>& path, const domain::Context& context) {
+	if (path.empty()) {
+		LOG_VERBOSE(error) << "Invalid path. No verb";
+
+		return;
+	}
+
 	if (path.front() == "get") {
 		path.pop_front();
 
@@ -370,9 +376,21 @@ void Courses(Bot& bot, std::deque<std::string_view>& path, const domain::Context
 }
 
 void Subscriptions(Bot& bot, std::deque<std::string_view>& path, const domain::Context& context) {
+	if (path.empty()) {
+		LOG_VERBOSE(error) << "Invalid path. No verb";
+
+		return;
+	}
+
 	const auto verb = path.front();
 
 	path.pop_front();
+
+	if (path.empty()) {
+		LOG_VERBOSE(error) << "Invalid path. No course_id";
+
+		return;
+	}
 
 	const auto course_id = path.front();
 	int course_id_number;
@@ -432,6 +450,12 @@ void CallCommand(Bot& bot, std::string path, const domain::Context& context) {
 	LOG_VERBOSE(info) << fmt::format("Command invoked: {}", path);
 
 	split_path.pop_front();
+
+	if (split_path.empty()) {
+		LOG_VERBOSE(error) << fmt::format("Entrypoint is empty (full path: {})", path);
+
+		return;
+	}
 
 	const auto entrypoint = kStaticQueries.find(split_path.front());
 
