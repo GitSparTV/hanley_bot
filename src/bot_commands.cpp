@@ -339,7 +339,7 @@ void GetCourse(Bot& bot, const domain::Context& context, std::string_view course
 		},
 		{
 			{tg::utils::ButtonType::kCallback,
-			is_subscribed ? "Отписаться от новостей" : "Подписаться на новости",
+			is_subscribed ? "🔕 Отписаться от новостей" : "🔔 Подписаться на новости",
 			fmt::format("static_subs_{}_{}", is_subscribed ? "del" : "add", course_id)}
 		}
 	};
