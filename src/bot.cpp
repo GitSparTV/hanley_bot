@@ -11,6 +11,7 @@
 #include "config.h"
 #include "bot_commands.h"
 #include "tg_debug.h"
+#include "logging.h"
 
 using namespace std::chrono_literals;
 
@@ -128,8 +129,16 @@ void Bot::Run() {
 	}
 }
 
-[[nodiscard]] pqxx::work Bot::BeginTransaction() {
-	return pqxx::work{database_};
+[[nodiscard]] pqxx::work& Bot::BeginTransaction() {
+	assert(!current_transaction_);
+
+	current_transaction_.emplace(database_);
+
+	return *current_transaction_;
+}
+
+void Bot::EndTransaction() {
+	current_transaction_.reset();
 }
 
 [[nodiscard]] const TgBot::Api& Bot::GetAPI() {

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include <pqxx/connection>
 #include <pqxx/transaction>
 #include <tgbot/types/User.h>
@@ -25,7 +27,9 @@ public:
 public:
 	void Run();
 
-	[[nodiscard]] pqxx::work BeginTransaction();
+	[[nodiscard]] pqxx::work& BeginTransaction();
+
+	void EndTransaction();
 
 	[[nodiscard]] bool IsOwner(domain::UserID user) const;
 
@@ -82,6 +86,7 @@ private:
 	pqxx::connection database_;
 	state::StatesController dialogs_;
 	config::BotConfig config_;
+	std::optional<pqxx::work> current_transaction_;
 };
 
 
