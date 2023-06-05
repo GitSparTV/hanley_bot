@@ -12,7 +12,7 @@
 
 namespace hanley_bot::tg::utils {
 
-bool IsPM(TgBot::Chat::Ptr chat);
+bool IsPM(const TgBot::Chat::Ptr& chat);
 
 enum class ButtonType {
 	kCallback,
