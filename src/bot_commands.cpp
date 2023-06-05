@@ -55,7 +55,13 @@ bool ParseNumber(std::string_view text, int& output) {
 }
 
 std::string_view GetCommandArgument(std::string_view text) {
-	return text.substr(text.find_first_of(' ') + 1);
+	auto pos = text.find_first_of(' ');
+
+	if (pos == std::string_view::npos) {
+		return {};
+	}
+
+	return text.substr(pos + 1);
 }
 
 void RemoveUser(uint64_t user_id) {
