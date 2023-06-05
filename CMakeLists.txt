@@ -26,6 +26,7 @@ add_executable(hanley_bot
 	src/bot_commands.cpp
 	src/bot_commands.h
 	src/config.h
+	src/boost_json.cpp
 	src/config_json_reader.cpp
 	src/config_json_reader.h
 	src/state_machine.cpp
