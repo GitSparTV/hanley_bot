@@ -46,26 +46,9 @@ public:
 	virtual ~StateBase() = default;
 
 public:
-	//void SetMachine(std::weak_ptr<Machine> machine) {
-	//    assert(!machine.expired());
-
-	//    machine_ = std::move(machine);
-	//};
-
-public:
 	virtual Value OnEnter([[maybe_unused]] Self self) { return false; }
 	virtual Value OnInput([[maybe_unused]] Self self, [[maybe_unused]] Message input_message) { return false; }
 	virtual Value OnCallback([[maybe_unused]] Self self, [[maybe_unused]] std::string_view data) { return false; }
-
-	//public:
-	//    std::shared_ptr<Machine> GetMachine() {
-	//        assert(!machine_.expired());
-	//
-	//        return machine_.lock();
-	//    }
-	//
-	//private:
-	//    std::weak_ptr<Machine> machine_;
 };
 
 } // namespace hanley_bot::state

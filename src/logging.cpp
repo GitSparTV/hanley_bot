@@ -31,10 +31,20 @@ void Format(logging::record_view const& rec, logging::formatting_ostream& strm) 
 
 	strm << rec[expr::smessage];
 }
+namespace keywords = boost::log::keywords;
 
-void Init(std::string log_folder) {
-	namespace keywords = boost::log::keywords;
 
+void InitConsole() {
+	logging::add_common_attributes();
+
+	logging::add_console_log(
+		std::cout,
+		keywords::auto_flush = true,
+		keywords::format = &Format
+	);
+}
+
+void InitFile(std::string log_folder) {
 	logging::add_common_attributes();
 
 	logging::add_file_log(
@@ -42,12 +52,6 @@ void Init(std::string log_folder) {
 		keywords::format = &Format,
 		keywords::auto_flush = true,
 		keywords::time_based_rotation = sinks::file::rotation_at_time_point(0, 0, 0)
-	);
-
-	logging::add_console_log(
-		std::cout,
-		keywords::auto_flush = true,
-		keywords::format = &Format
 	);
 }
 

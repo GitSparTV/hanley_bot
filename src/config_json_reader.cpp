@@ -1,6 +1,8 @@
 #include <fstream>
 #include <filesystem>
 
+#include "sdk.h"
+
 #include <boost/json.hpp>
 
 #include "logging.h"

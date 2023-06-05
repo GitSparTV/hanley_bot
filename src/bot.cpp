@@ -11,6 +11,7 @@
 #include "config.h"
 #include "bot_commands.h"
 #include "tg_debug.h"
+#include "tg_utils.h"
 #include "logging.h"
 
 using namespace std::chrono_literals;
@@ -49,31 +50,42 @@ Bot::Bot(config::Config& config) :
 
 void Bot::Run() {
 	bot_.getEvents().onUnknownCommand([](TgBot::Message::Ptr message) {
-		std::cout << "onUnknownCommand ";
-		hanley_bot::tg::debug::DumpMessage(std::cout, message);
-		std::cout << std::endl;
+		LOG(warning) << "Received unknown command: " << message->text << " " << hanley_bot::tg::debug::DumpMessage(message);
 	});
 
 	bot_.getEvents().onNonCommandMessage([this](TgBot::Message::Ptr message) {
-		std::cout << "onNonCommandMessage ";
-		hanley_bot::tg::debug::DumpMessage(std::cout, message);
-		std::cout << std::endl;
+		if (tg::utils::IsPM(message->chat)) {
+			LOG(info) << message->from->id << " wrote: \"" << message->text << "\"";
+		}
 
-		dialogs_.HandleTextInput(message);
+		LOG(debug) << tg::debug::DumpMessage(message);
+
+		if (IsFromNewsThread(message) && IsOwner(message)) {
+			LOG(info) << "A message was posted in news thread, deleted: " << tg::debug::DumpMessage(message);
+
+			GetAPI().deleteMessage(message->chat->id, message->messageId);
+			return;
+		}
+
+		try {
+			dialogs_.HandleTextInput(message);
+		} catch (const std::exception& ex) {
+			LOG(error) << "Exception caught in HandleTextInput (" << typeid(ex).name() << "): " << ex.what();
+		}
+
+		EndTransaction();
 	});
 
 	bot_.getEvents().onInlineQuery([](TgBot::InlineQuery::Ptr) {
-		//BOOST_LOG_TRIVIAL(warning) << "Unexpected event \"onInlineQuery\"!";
+		LOG(warning) << "Received unhandled onInlineQuery event";
 	});
 
 	bot_.getEvents().onChosenInlineResult([](TgBot::ChosenInlineResult::Ptr) {
-		//BOOST_LOG_TRIVIAL(warning) << "Unexpected event \"onChosenInlineResult\"!";
+		LOG(warning) << "Received unhandled onChosenInlineResult event";
 	});
 
 	bot_.getEvents().onCallbackQuery([this](TgBot::CallbackQuery::Ptr query) {
-		std::cout << "onCallbackQuery ";
-		hanley_bot::tg::debug::DumpCallbackQuery(std::cout, query);
-		std::cout << std::endl;
+		LOG(debug) << "Received onCallbackQuery: " << hanley_bot::tg::debug::DumpCallbackQuery(query);
 
 		try {
 			if (query->data.starts_with("static_")) {
@@ -83,53 +95,52 @@ void Bot::Run() {
 			}
 
 			AnswerCallbackQuery(query->id);
-		} catch (const TgBot::TgException& ex) {
+		} catch (const std::exception& ex) {
 			AnswerCallbackQuery(query->id, "Произошла ошибка при выполнении запроса. Если ошибка повторяется, напишите владельцу", true, 15);
 
-			std::cout << "onCallbackQuery expection: " << ex.what() << std::endl;
+			LOG(error) << "Exception caught during callback query (" << typeid(ex).name() << "): " << ex.what();
 		}
+
+		EndTransaction();
 	});
 
-	bot_.getEvents().onMyChatMember([](TgBot::ChatMemberUpdated::Ptr update) {
-		std::cout << "onMyChatMember" << std::endl;
+	bot_.getEvents().onMyChatMember([](TgBot::ChatMemberUpdated::Ptr) {
+		LOG(warning) << "Received unhandled onMyChatMember event";
 	});
 
-	bot_.getEvents().onChatMember([](TgBot::ChatMemberUpdated::Ptr update) {
-		std::cout << "onChatMember" << std::endl;
+	bot_.getEvents().onChatMember([](TgBot::ChatMemberUpdated::Ptr) {
+		LOG(warning) << "Received unhandled onChatMember event";
 	});
 
-	bot_.getEvents().onChatJoinRequest([](TgBot::ChatJoinRequest::Ptr update) {
-		std::cout << "onChatJoinRequest" << std::endl;
+	bot_.getEvents().onChatJoinRequest([](TgBot::ChatJoinRequest::Ptr) {
+		LOG(warning) << "Received unhandled onChatJoinRequest event";
 	});
 
-	//bot_.getApi().blockedByUser
-	//bot_.getApi().copyMessage
-	//bot_.getApi().deleteMessage
-	//bot_.getApi().getChat
-	//bot_.getApi().getChatMember
-	//bot_.getApi().sendChatAction
-	//bot_.getApi().sendMessage
-	//bot_.getApi().banChatMember
+	TgBot::TgLongPoll long_poll(bot_);
 
-	TgBot::TgLongPoll longPoll(bot_);
+	LOG(info) << "Starting polling...";
 
 	while (true) {
 		try {
-			longPoll.start();
-		} catch (const TgBot::TgException& e) {
-			std::cout << "error: " << e.what();
+			long_poll.start();
+		} catch (const TgBot::TgException& ex) {
+			LOG(error) << "TgExpection caught: " << ex.what();
+
 			std::this_thread::sleep_for(3s);
-		} catch (const std::exception& e) {
-			std::cout << "(" << typeid(e).name() << ") error: " << e.what();
+		} catch (const std::exception& ex) {
+			LOG(error) << "Exception caught (" << typeid(ex).name() << "): " << ex.what();
+
 			std::this_thread::sleep_for(3s);
 		} catch (...) {
-			std::cout << "Unknown exception";
+			LOG(error) << "Unknown exception";
+
 			std::this_thread::sleep_for(3s);
 		}
 	}
 }
 
 [[nodiscard]] pqxx::work& Bot::BeginTransaction() {
+	LOG(debug) << "Begin transaction...";
 	assert(!current_transaction_);
 
 	current_transaction_.emplace(database_);
@@ -138,6 +149,8 @@ void Bot::Run() {
 }
 
 void Bot::EndTransaction() {
+	LOG(debug) << "End transaction";
+
 	current_transaction_.reset();
 }
 
@@ -204,6 +217,8 @@ void Bot::AnswerCallbackQuery(const std::string& query_id, const std::string& te
 	static std::string last_query_id;
 
 	if (last_query_id == query_id) {
+		LOG(debug) << "Query was already answered (" << query_id << ')';
+
 		return;
 	}
 

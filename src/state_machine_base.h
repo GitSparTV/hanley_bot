@@ -13,6 +13,7 @@
 
 #include <tgbot/types/Message.h>
 
+#include "logging.h"
 #include "state_base.h"
 #include "state_machine.h"
 

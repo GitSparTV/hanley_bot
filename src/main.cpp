@@ -8,6 +8,8 @@
 using namespace std::chrono_literals;
 
 int main(int argc, char* argv[]) {
+	hanley_bot::logger::InitConsole();
+
 	std::vector<std::string_view> args(argv + 1, argv + argc);
 
 	if (argc < 2) {
@@ -16,9 +18,9 @@ int main(int argc, char* argv[]) {
 		return EXIT_FAILURE;
 	}
 
-	hanley_bot::logger::Init();
-
 	auto config = hanley_bot::config::FromJSONFile(args[0]);
+
+	hanley_bot::logger::InitFile(config.log_folder);
 
 	try {
 		hanley_bot::Bot bot(config);
@@ -33,11 +35,16 @@ int main(int argc, char* argv[]) {
 
 		bot.Run();
 	} catch (const std::exception& ex) {
-		std::cout << "Exception caught in main (" << typeid(ex).name() << "): " << ex.what() << std::endl;
+		LOG(fatal) << "Exception caught in main (" << typeid(ex).name() << "): " << ex.what();
+
 		return EXIT_FAILURE;
 	} catch (...) {
-		std::cout << "Unknown exception caught in main" << std::endl;
+		LOG(fatal) << "Unknown exception caught in main";
+
+		return EXIT_FAILURE;
 	}
+
+	LOG(warning) << "bot.Run() finished?";
 
 	return EXIT_SUCCESS;
 }

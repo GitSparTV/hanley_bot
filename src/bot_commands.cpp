@@ -13,9 +13,11 @@
 #include <tgbot/types/BotCommandScopeDefault.h>
 #include <tgbot/types/BotCommandScopeAllGroupChats.h>
 
+#include "logging.h"
 #include "bot_commands.h"
 #include "bot.h"
 #include "tg_utils.h"
+#include "tg_debug.h"
 #include "domain.h"
 
 using namespace std::literals;
@@ -85,6 +87,8 @@ void Broadcast(TgBot::Message::Ptr original_message) {
 
 bool RegisterUser(Bot& bot, pqxx::work& tx, TgBot::User::Ptr user) {
 	if (tx.query_value<bool>(std::format("SELECT EXISTS(SELECT 1 FROM users WHERE telegram_id = {})", user->id))) {
+		LOG_VERBOSE(debug) << "User " << user->id << " already registered";
+
 		return false;
 	}
 
@@ -95,22 +99,24 @@ bool RegisterUser(Bot& bot, pqxx::work& tx, TgBot::User::Ptr user) {
 			tx.esc(user->lastName))
 	);
 
+	LOG_VERBOSE(debug) << "New user: " << user->id << " was registered";
+
 	return true;
 }
 
 void Start(Bot& bot, const domain::Context& context) {
 	if (!context.IsUserCommand() || !context.IsPM()) {
+		LOG_VERBOSE(warning) << "Invoked from invalid context: " << tg::debug::DumpContext(context);
+
 		return;
 	}
 
 	static constexpr std::string_view kStartCommand = "/start";
 
 	const std::string& text = context.message->text;
-
 	bool has_deep_link = text.size() <= kStartCommand.size();
 
 	auto& tx = bot.BeginTransaction();
-
 	bool already_registered = RegisterUser(bot, tx, context.message->from);
 
 	if (!already_registered || (already_registered && has_deep_link)) {
@@ -120,12 +126,15 @@ void Start(Bot& bot, const domain::Context& context) {
 	tx.commit();
 
 	if (has_deep_link) {
+		LOG_VERBOSE(debug) << "No deep link";
 		return;
 	}
 
 	auto deep_link = text.substr(kStartCommand.size() + 1);
 
 	if (!deep_link.starts_with("static")) {
+		LOG_VERBOSE(warning) << "Deep link doesn't start with word \"static\". Content: " << text;
+
 		return;
 	}
 
@@ -134,6 +143,8 @@ void Start(Bot& bot, const domain::Context& context) {
 
 void GetCourses(Bot& bot, const domain::Context& context) {
 	if (!context.IsPM()) {
+		LOG_VERBOSE(warning) << "Invoked from invalid context: " << tg::debug::DumpContext(context);
+
 		return;
 	}
 
@@ -172,14 +183,35 @@ void GetCourses(Bot& bot, const domain::Context& context) {
 	tx.commit();
 }
 
+extern const std::vector<CommandInfo> kCommands;
+
+void Help(Bot& bot, const domain::Context& context) {
+	if (!context.IsUserCommand() || !context.IsPM()) {
+		LOG_VERBOSE(warning) << "Invoked from invalid context: " << tg::debug::DumpContext(context);
+
+		return;
+	}
+
+	std::string result = "В случае неисправностей пишите [мне](t.me/savvatelegram)\n\nДоступные команды:\n";
+
+	for (const auto& command : kCommands) {
+		if (command.permission == Permission::kPublic || bot.IsOwner(context.user)) {
+			result += std::format("/{} — {}\n", command.name, command.description);
+		}
+	}
+
+	bot.SendMessage(context, result, {}, "Markdown");
+}
+
 void Test(Bot& bot, const domain::Context& context) {
 	//auto sent = bot.getApi().sendMessage(message->chat->id, "MainCourseForm test");
 
 	//dialogs.Add<dialogs::MainCourseForm>(sent);
 }
 
-static const std::vector<CommandInfo> kCommands = {
+const std::vector<CommandInfo> kCommands = {
 	{"start", "Начать разговор", Start, Permission::kPublicHidden},
+	{"help", "Помощь", Help, Permission::kPublic},
 	{"courses", "Список курсов на русском языке от FTF", GetCourses, Permission::kPublic},
 	{"test", "Тест", Test, Permission::kOwner}
 };
@@ -214,15 +246,17 @@ void PushCommands(Bot& bot) {
 
 void InitializeCommands(Bot& bot) {
 	for (const auto& command_info : kCommands) {
-		auto listener = [&bot,
-			permission = command_info.permission, callback = command_info.callback]
-			(TgBot::Message::Ptr message) {
+		auto listener = [&bot, &command_info]
+		(TgBot::Message::Ptr message) {
+			LOG(info) << std::format("User {} invoked /{} in {}", message->from->id, command_info.name, message->chat->id);
 
-			if (permission == commands::Permission::kOwner && !bot.IsOwner(message)) {
+			if (command_info.permission == commands::Permission::kOwner && !bot.IsOwner(message)) {
+				LOG_VERBOSE(warning) << "Access denied. " << tg::debug::DumpMessage(message);
+
 				return;
 			}
 
-			callback(bot, domain::Context::FromCommand(message));
+			command_info.callback(bot, domain::Context::FromCommand(message));
 
 			bot.EndTransaction();
 		};
@@ -272,6 +306,8 @@ void GetCourse(Bot& bot, const domain::Context& context, std::string_view course
 	int course_id_number;
 
 	if (!ParseNumber(course_id, course_id_number)) {
+		LOG_VERBOSE(error) << "Invalid course_id (" << course_id << ')';
+
 		return;
 	}
 
@@ -280,6 +316,8 @@ void GetCourse(Bot& bot, const domain::Context& context, std::string_view course
 	auto [full_name, description, url, is_subscribed] = tx.query1<std::string, std::string, std::string, bool>(std::format("SELECT full_name, description, url, CASE WHEN subscriptions.course_id IS NOT NULL THEN true ELSE false END AS subscribed FROM courses LEFT JOIN subscriptions ON courses.id = subscriptions.course_id AND subscriptions.telegram_id = {} WHERE id = {}", context.user, course_id_number));
 
 	const std::string_view is_subscribed_text = is_subscribed ? "<i>Вы подписаны на новости об этом курсе.</i>" : "<i>Вы можете подписаться на новости об этом курсе ниже.</i>";
+
+	LOG_VERBOSE(debug) << std::format("GetCourse: course={}, user={}, is_subscribed={}", full_name, context.user, is_subscribed);
 
 	std::string result = std::format("<b>{}</b>\n\n{}\n{}", full_name, description, is_subscribed_text);
 
@@ -325,6 +363,8 @@ void Subscriptions(Bot& bot, std::deque<std::string_view>& path, const domain::C
 	int course_id_number;
 
 	if (!ParseNumber(course_id, course_id_number)) {
+		LOG_VERBOSE(error) << "Invalid course_id (" << course_id << ')';
+
 		return;
 	}
 
@@ -338,13 +378,18 @@ void Subscriptions(Bot& bot, std::deque<std::string_view>& path, const domain::C
 		tx.exec0(std::format("INSERT INTO subscriptions (telegram_id, course_id) VALUES ({}, {}) ON CONFLICT DO NOTHING", context.user, course_id_number));
 
 		response = std::format("Вы подписались на новости о курсе \"{}\"", full_name);
+
+		LOG_VERBOSE(info) << std::format("Subscribed {} to {}", context.user, course_id);
 	} else if (verb == "del") {
 		tx.exec0(std::format("DELETE FROM subscriptions WHERE telegram_id = {} AND course_id = {}", context.user, course_id_number));
 
 		response = std::format("Вы больше не будете получать новости о курсе \"{}\"", full_name);
-	} else {
 
-		response = "Ошибка?";
+		LOG_VERBOSE(info) << std::format("Unsubscribed {} from {}", context.user, course_id);
+	} else {
+		LOG_VERBOSE(error) << std::format("Subscriptions: Unknown verb ({}) {}", verb, tg::debug::DumpContext(context));
+
+		response = "Ошибка. Напишите владельцу.";
 	}
 
 	if (context.IsCallback()) {
@@ -352,12 +397,12 @@ void Subscriptions(Bot& bot, std::deque<std::string_view>& path, const domain::C
 
 		tx.commit();
 
-		GetCourse(bot, context, course_id);
-	} else {
-		bot.SendMessage(context, response);
-
-		tx.commit();
+		return GetCourse(bot, context, course_id);
 	}
+
+	bot.SendMessage(context, response);
+
+	tx.commit();
 }
 
 static const std::unordered_map<std::string_view, StaticQueryInfo> kStaticQueries = {
@@ -369,18 +414,23 @@ void CallCommand(Bot& bot, std::string path, const domain::Context& context) {
 	auto split_path = SplitPath(path);
 
 	assert(split_path[0] == "static");
+	LOG_VERBOSE(info) << std::format("Command invoked: {}", path);
 
 	split_path.pop_front();
 
 	const auto entrypoint = kStaticQueries.find(split_path.front());
 
 	if (entrypoint == std::end(kStaticQueries)) {
+		LOG_VERBOSE(error) << std::format("Unknown entrypoint {} (full path: {})", split_path.front(), path);
+
 		return;
 	}
 
 	const auto& [callback, permission] = entrypoint->second;
 
 	if (permission == Permission::kOwner && bot.IsOwner(context.user)) {
+		LOG_VERBOSE(warning) << std::format("Access denied. path={} context={}", path, tg::debug::DumpContext(context));
+
 		return;
 	}
 
