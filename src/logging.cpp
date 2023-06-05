@@ -1,5 +1,7 @@
 #include "sdk.h"
 
+#include <csignal>
+
 #include <boost/json.hpp>
 #include <boost/log/core.hpp>
 #include <boost/log/trivial.hpp>
@@ -55,6 +57,18 @@ void ChangeSeverityFilter(std::string_view name) {
 	);
 }
 
+void SignalHandler(int signal) {
+	LOG_VERBOSE(fatal) << "Singal " << signal << " was caught!";
+}
+
+void HookSignals() {
+	std::signal(SIGTERM, SignalHandler);
+	std::signal(SIGSEGV, SignalHandler);
+	std::signal(SIGINT, SignalHandler);
+	std::signal(SIGILL, SignalHandler);
+	std::signal(SIGABRT, SignalHandler);
+	std::signal(SIGFPE, SignalHandler);
+}
 
 void InitConsole() {
 	logging::add_common_attributes();

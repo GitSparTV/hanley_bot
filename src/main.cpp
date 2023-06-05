@@ -1,19 +1,16 @@
-#include <iostream>
-
 #include "logging.h"
 #include "bot.h"
 #include "bot_commands.h"
 #include "config_json_reader.h"
 
-using namespace std::chrono_literals;
-
 int main(int argc, char* argv[]) {
 	hanley_bot::logger::InitConsole();
+	hanley_bit::logger::HookSignals();
 
 	std::vector<std::string_view> args(argv + 1, argv + argc);
 
 	if (argc < 2) {
-		std::cout << "./hanley_bot <config_file> [<push_to_telegram>]" << std::endl;
+		LOG(error) << "./hanley_bot <config_file> [<push_to_telegram>]" << std::endl;
 
 		return EXIT_FAILURE;
 	}

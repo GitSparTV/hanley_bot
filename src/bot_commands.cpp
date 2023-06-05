@@ -217,7 +217,7 @@ void LogLevel(Bot& bot, const domain::Context& context) {
 	auto severity = GetCommandArgument(context.message->text);
 
 	LOG(warning) << "Severity was changed to " << severity;
-	
+
 	logger::ChangeSeverityFilter(severity);
 
 	bot.SendMessage(context, fmt::format("Changed severity to {}", severity));
