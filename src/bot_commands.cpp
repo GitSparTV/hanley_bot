@@ -48,6 +48,16 @@ TgBot::BotCommand::Ptr MakeCommand(std::string_view name, std::string_view descr
 	return command;
 }
 
+bool ParseNumber(std::string_view text, int& output) {
+	auto status = std::from_chars(text.data(), text.data() + text.size(), output);
+
+	return status.ec == std::errc{};
+}
+
+std::string_view GetCommandArgument(std::string_view text) {
+	return text.substr(text.find_first_of(' ') + 1);
+}
+
 void RemoveUser(uint64_t user_id) {
 	//pqxx::work tx{c};
 
