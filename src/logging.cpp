@@ -94,11 +94,11 @@ void InitConsole() {
 	);
 }
 
-void InitFile(const std::string& log_folder) {
+void InitFile(std::string log_folder) {
 	logging::add_common_attributes();
 
 	logging::add_file_log(
-		keywords::file_name = log_folder,
+		keywords::file_name = std::move(log_folder),
 		keywords::format = &Format,
 		keywords::auto_flush = true,
 		keywords::time_based_rotation = sinks::file::rotation_at_time_point(0, 0, 0)
