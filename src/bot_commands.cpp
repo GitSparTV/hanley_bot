@@ -115,7 +115,7 @@ bool RegisterUser(Bot& bot, pqxx::work& tx, TgBot::User::Ptr user) {
 			tx.esc(user->lastName))
 	);
 
-	LOG_VERBOSE(debug) << "New user: " << user->id << " was registered";
+	LOG_VERBOSE(info) << "New user: " << user->id << " was registered";
 
 	return true;
 }
@@ -136,7 +136,7 @@ void Start(Bot& bot, const domain::Context& context) {
 	bool registered = RegisterUser(bot, tx, context.message->from);
 
 	if (registered || (!registered && deep_link.empty())) {
-		bot.SendMessage(context.message, "Привет!\nЭто бот русскоязычной группы [\"Хенли. ПФА&ТОН\"](t.me/ruspfasbt).\nБот поможет зарегистрироваться на потоки обучения, а если их ещё нет, то подписаться на уведомления на те курсы, что вас интересуют.\nДля тех, кто уже учится на потоке, этот бот поможет вам активировать курс, получать новости группы и другое.\nСписок доступных всем команд есть у вас в меню внизу слева, если не видно, наберите \"/help\".\n\nВ случае неисправностей или вопросов пишите: t.me/savvatelegram.", {}, "Markdown");
+		bot.SendMessage(context.message, "Привет!\nЭто бот русскоязычной группы [\"Хенли. ПФА&ТОН\"](t.me/ruspfasbt).\n*Что он умеет?*\n\nБот поможет зарегистрироваться на потоки обучения, а если их ещё нет, то подписаться на уведомления на те курсы, что вас интересуют.\nДля тех, кто уже учится на потоке, этот бот поможет вам активировать курс, получать новости группы и другое.\n\n*Как пользоваться ботом?*\n\nНачните с ним общение в этом чате.\nПосмотрите в нижний левый угол, там будет синяя кнопка-меню (☰) с доступными командами. Если не видите, напишите */help* (Можно нажать прямо здесь)\nНа данный момент доступна только подписка на новости :)\n\n_ℹ️ Организация курсов делается безвозмездно, во благо популяризации и развития подхода в русскоязычном сообществе._\n\nЕсли увидели неисправность, хотите благодарностей, пожертвовать или задать вопрос, напишите [мне](t.me/savvatelegram).", {}, "Markdown", true);
 	}
 
 	tx.commit();
@@ -376,11 +376,13 @@ void GetCourse(Bot& bot, const domain::Context& context, std::string_view course
 
 	auto [full_name, description, url, is_subscribed] = tx.query1<std::string, std::string, std::string, bool>(fmt::format("SELECT full_name, description, url, CASE WHEN subscriptions.course_id IS NOT NULL THEN true ELSE false END AS subscribed FROM courses LEFT JOIN subscriptions ON courses.id = subscriptions.course_id AND subscriptions.telegram_id = {} WHERE id = {}", context.user, course_id_number));
 
-	const std::string_view is_subscribed_text = is_subscribed ? "<i>Вы подписаны на новости об этом курсе.</i>" : "<i>Вы можете подписаться на новости об этом курсе ниже.</i>";
+	const std::string_view is_subscribed_text = is_subscribed ? "<i>ℹ️ Вы подписаны на новости об этом курсе.</i>" : "<i>ℹ️ Вы можете подписаться на новости об этом курсе ниже.</i>";
 
 	LOG_VERBOSE(debug) << fmt::format("GetCourse: course={}, user={}, is_subscribed={}", full_name, context.user, is_subscribed);
 
-	std::string result = fmt::format("<b>{}</b>\n\n{}\n{}", full_name, description, is_subscribed_text);
+	InsertExchanges(bot, description);
+
+	std::string result = fmt::format("<b>{}</b>\n\n{}\n\n{}", full_name, description, is_subscribed_text);
 
 	tg::utils::MakeKeyboard keyboard{
 		{
@@ -395,9 +397,9 @@ void GetCourse(Bot& bot, const domain::Context& context, std::string_view course
 	};
 
 	if (context.IsCallback()) {
-		bot.EditMessage(context, result, keyboard, "HTML");
+		bot.EditMessage(context, result, keyboard, "HTML", true);
 	} else {
-		bot.SendMessage(context, result, keyboard, "HTML");
+		bot.SendMessage(context, result, keyboard, "HTML", true);
 	}
 
 	tx.commit();

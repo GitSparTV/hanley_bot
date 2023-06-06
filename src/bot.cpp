@@ -27,7 +27,7 @@ Bot::Bot(config::Config& config) :
 	config_(std::move(config)) {}
 
 [[nodiscard]] bool Bot::IsOwner(domain::UserID user) const {
-	return user == config_.owner_id;
+	return GetOwnerID() == user;
 }
 
 [[nodiscard]] bool Bot::IsOwner(const TgBot::User::Ptr& user) const {
@@ -43,11 +43,11 @@ Bot::Bot(config::Config& config) :
 }
 
 [[nodiscard]] bool Bot::IsMainGroup(const TgBot::Chat::Ptr& chat) const {
-	return chat->id == config_.group_id;
+	return chat->id == config_.bot_config.group_id;
 }
 
 [[nodiscard]] bool Bot::IsFromNewsThread(const TgBot::Message::Ptr& message) const {
-	return IsMainGroup(message->chat) && message->messageThreadId == config_.news_thread_id;
+	return IsMainGroup(message->chat) && message->messageThreadId == config_.bot_config.news_thread_id;
 }
 
 void Bot::Run() {
@@ -62,7 +62,7 @@ void Bot::Run() {
 
 		LOG(debug) << tg::debug::DumpMessage(message);
 
-		if (IsFromNewsThread(message) && IsOwner(message)) {
+		if (IsFromNewsThread(message) && !IsOwner(message)) {
 			LOG(info) << "A message was posted in news thread, deleted: " << tg::debug::DumpMessage(message);
 
 			GetAPI().deleteMessage(message->chat->id, message->messageId);
@@ -142,8 +142,11 @@ void Bot::Run() {
 }
 
 [[nodiscard]] pqxx::work& Bot::BeginTransaction() {
+	if (current_transaction_) {
+		return *current_transaction_;
+	}
+
 	LOG(debug) << "Begin transaction...";
-	assert(!current_transaction_);
 
 	current_transaction_.emplace(database_);
 
@@ -161,7 +164,7 @@ void Bot::EndTransaction() {
 }
 
 [[nodiscard]] domain::UserID Bot::GetOwnerID() const {
-	return config_.owner_id;
+	return config_.bot_config.owner_id;
 }
 
 void Bot::RegisterCommand(const std::string& name, const TgBot::EventBroadcaster::MessageListener& listener) {
