@@ -31,7 +31,8 @@ BotConfig tag_invoke(const boost::json::value_to_tag<BotConfig>&, boost::json::v
 Config tag_invoke(const boost::json::value_to_tag<Config>&, boost::json::value const& json_value) {
 	return {
 		.credentials = boost::json::value_to<BotCredentials>(json_value.at("credentials")),
-		.bot_config = boost::json::value_to<BotConfig>(json_value.at("bot_config"))
+		.bot_config = boost::json::value_to<BotConfig>(json_value.at("bot_config")),
+		.log_folder = boost::json::value_to<std::string>(json_value.at("log_folder"))
 	};
 }
 
