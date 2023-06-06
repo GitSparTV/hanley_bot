@@ -15,6 +15,7 @@ BotCredentials tag_invoke(const boost::json::value_to_tag<BotCredentials>&, boos
 	return {
 		.bot_token = boost::json::value_to<std::string>(json_value.at("bot_token")),
 		.database_uri = boost::json::value_to<std::string>(json_value.at("database_uri")),
+		.exchange_api = boost::json::value_to<std::string>(json_value.at("exchange_api"))
 	};
 }
 

@@ -9,6 +9,7 @@ namespace hanley_bot::config {
 struct BotCredentials {
 	std::string bot_token;
 	std::string database_uri;
+	std::string exchange_api;
 };
 
 struct BotConfig {

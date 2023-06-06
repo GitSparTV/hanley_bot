@@ -3,6 +3,7 @@
 #include <chrono>
 #include <thread>
 
+#include <fmt/core.h>
 #include <tgbot/tgbot.h>
 #include <pqxx/pqxx>
 
@@ -13,6 +14,7 @@
 #include "tg_debug.h"
 #include "tg_utils.h"
 #include "logging.h"
+#include "currency_extension.h"
 
 using namespace std::chrono_literals;
 
@@ -22,7 +24,7 @@ Bot::Bot(config::Config& config) :
 	bot_(std::move(config.credentials.bot_token)),
 	database_(config.credentials.database_uri),
 	dialogs_(*this),
-	config_(config.bot_config) {}
+	config_(std::move(config)) {}
 
 [[nodiscard]] bool Bot::IsOwner(domain::UserID user) const {
 	return user == config_.owner_id;
@@ -225,6 +227,33 @@ void Bot::AnswerCallbackQuery(const std::string& query_id, const std::string& te
 	last_query_id = query_id;
 
 	GetAPI().answerCallbackQuery(query_id, text, show_alert, "", cache_time);
+}
+
+double Bot::GetRate() {
+	auto& tx = BeginTransaction();
+
+	auto result = tx.query01<double>(
+		"DELETE FROM exchange_cache WHERE time < NOW() - INTERVAL '1 day'; "
+		"SELECT rate FROM exchange_cache WHERE time > NOW() - INTERVAL '1 day';");
+
+	if (result) {
+		auto [rate] = *result;
+
+		LOG_VERBOSE(trace) << "Got cached result";
+
+		return rate;
+	}
+
+	LOG_VERBOSE(debug) << "Cache expired, getting new value...";
+	double rate = currency::FetchConversionRate(config_.credentials.exchange_api);
+
+	tx.exec0(fmt::format("INSERT INTO exchange_cache(rate) VALUES({});", rate));
+
+	return rate;
+}
+
+int Bot::ConvertCurrency(int amount_usd) {
+	return static_cast<int>(amount_usd * GetRate());
 }
 
 

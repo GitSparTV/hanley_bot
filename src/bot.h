@@ -81,11 +81,16 @@ public:
 	void AnswerCallbackQuery(const std::string& query_id, const std::string& text = "",
 		bool show_alert = false, std::int32_t cache_time = 0);
 
+	int ConvertCurrency(int amount_usd);
+
+private:
+	double GetRate();
+
 private:
 	TgBot::Bot bot_;
 	pqxx::connection database_;
 	state::StatesController dialogs_;
-	config::BotConfig config_;
+	config::Config config_;
 	std::optional<pqxx::work> current_transaction_;
 };
 

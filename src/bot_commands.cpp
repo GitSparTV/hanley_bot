@@ -6,7 +6,7 @@
 #include <vector>
 #include <deque>
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <tgbot/types/BotCommand.h>
 #include <tgbot/types/Message.h>
 #include <tgbot/types/BotCommandScopeChat.h>
@@ -316,6 +316,52 @@ struct StaticQueryInfo {
 	Callback callback;
 	Permission permission;
 };
+
+std::string Pad3Digits(int number) {
+	std::string serialized = fmt::format_int(number).str();
+
+	auto size = serialized.size();
+
+	if (size <= 4) {
+		return serialized;
+	}
+
+	auto div = std::lldiv(size, 3);
+
+	auto new_size = size + (div.quot - (div.rem ? 0 : 1));
+
+	serialized.reserve(new_size);
+
+	for (size_t s = (div.rem ? div.rem : 3), offset = 0; s != size; s += 3, ++offset) {
+		serialized.insert(s + offset, 1, ' ');
+	}
+
+	return serialized;
+}
+
+void InsertExchanges(Bot& bot, std::string& text) {
+	size_t last_pos = 0;
+
+	while (true) {
+		auto pos = text.find_first_of('$', last_pos);
+
+		if (pos == std::string::npos) {
+			return;
+		}
+
+		int price;
+
+		auto piece = std::string_view(text).substr(pos + 1);
+
+		auto status = std::from_chars(piece.data(), piece.data() + piece.size(), price);
+
+		if (status.ec == std::errc{}) {
+			text.insert(status.ptr - text.data(), fmt::format(" (Примерно {}₽ на текущий день)", Pad3Digits(bot.ConvertCurrency(price))));
+		}
+
+		last_pos = pos + 1;
+	}
+}
 
 void GetCourse(Bot& bot, const domain::Context& context, std::string_view course_id) {
 	int course_id_number;

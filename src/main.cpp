@@ -1,3 +1,4 @@
+#include "sdk.h"
 #include "logging.h"
 #include "bot.h"
 #include "bot_commands.h"

@@ -37,6 +37,8 @@ add_executable(hanley_bot
 	src/states_controller.h
 	src/main_course_form.cpp
 	src/main_course_form.h
+	src/currency_extension.cpp
+	src/currency_extension.h
 	)
 target_include_directories(hanley_bot PRIVATE CONAN_PKG::tgbot CONAN_PKG::boost CONAN_PKG::libpqxx CONAN_PKG::fmt)
 target_link_libraries(hanley_bot PRIVATE CONAN_PKG::tgbot CONAN_PKG::boost CONAN_PKG::libpqxx CONAN_PKG::fmt)
