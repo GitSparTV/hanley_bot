@@ -98,7 +98,16 @@ void Bot::Run() {
 
 			AnswerCallbackQuery(query->id);
 		} catch (const std::exception& ex) {
-			AnswerCallbackQuery(query->id, "Произошла ошибка при выполнении запроса. Если ошибка повторяется, напишите владельцу", true, 15);
+			try {
+				AnswerCallbackQuery(query->id, "Произошла ошибка при выполнении запроса. Если ошибка повторяется, напишите владельцу", true, 15);
+			} catch (std::exception& ex) {
+				if (std::string_view(ex.what()).find("query is too old") != std::string_view::npos) {
+					LOG_VERBOSE(warning) << "Query was too old. Answer was not sent";
+				}
+
+				LOG_VERBOSE(error) << "Unexpected error on AnswerCallbackQuery! " << ex.what();
+				SendMessage(query->message, "Произошла ошибка при выполнении запроса. Если ошибка повторяется, напишите владельцу");
+			}
 
 			LOG(error) << "Exception caught during callback query (" << typeid(ex).name() << "): " << ex.what();
 		}
