@@ -83,9 +83,6 @@ public:
 	void AnswerCallbackQuery(const std::string& query_id, const std::string& text = "",
 		bool show_alert = false, std::int32_t cache_time = 0);
 
-	int ConvertCurrency(int amount_usd);
-
-private:
 	double GetRate();
 
 private:

@@ -281,9 +281,5 @@ double Bot::GetRate() {
 	return rate;
 }
 
-int Bot::ConvertCurrency(int amount_usd) {
-	return static_cast<int>(amount_usd * GetRate());
-}
-
 
 } // namespace hanley_bot

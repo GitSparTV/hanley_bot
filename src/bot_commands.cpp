@@ -342,6 +342,8 @@ std::string Pad3Digits(int number) {
 void InsertExchanges(Bot& bot, std::string& text) {
 	size_t last_pos = 0;
 
+	double rate = bot.GetRate();
+
 	while (true) {
 		auto pos = text.find_first_of('$', last_pos);
 
@@ -356,7 +358,7 @@ void InsertExchanges(Bot& bot, std::string& text) {
 		auto status = std::from_chars(piece.data(), piece.data() + piece.size(), price);
 
 		if (status.ec == std::errc{}) {
-			text.insert(status.ptr - text.data(), fmt::format(" (Примерно {}₽ на текущий день)", Pad3Digits(bot.ConvertCurrency(price))));
+			text.insert(status.ptr - text.data(), fmt::format(" (Примерно {}₽ на текущий день)", Pad3Digits(static_cast<int>(price * rate))));
 		}
 
 		last_pos = pos + 1;
