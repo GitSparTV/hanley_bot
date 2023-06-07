@@ -139,7 +139,7 @@ void Start(Bot& bot, const domain::Context& context) {
 		bot.SendMessage(context.message, "Привет!\nЭто бот русскоязычной группы [\"Хенли. ПФА&ТОН\"](t.me/ruspfasbt).\n*Что он умеет?*\n\nБот поможет зарегистрироваться на потоки обучения, а если их ещё нет, то подписаться на уведомления на те курсы, что вас интересуют.\nДля тех, кто уже учится на потоке, этот бот поможет вам активировать курс, получать новости группы и другое.\n\n*Как пользоваться ботом?*\n\nНачните с ним общение в этом чате.\nПосмотрите в нижний левый угол, там будет синяя кнопка-меню (☰) с доступными командами. Если не видите, напишите */help* (Можно нажать прямо здесь)\nНа данный момент доступна только подписка на новости :)\n\n_ℹ️ Организация курсов делается безвозмездно, во благо популяризации и развития подхода в русскоязычном сообществе._\n\nЕсли увидели неисправность, хотите поблагодарить, пожертвовать или задать вопрос, напишите [мне](t.me/savvatelegram).", {}, "Markdown", true);
 	}
 
-	tx.commit();
+	bot.Commit();
 
 	if (deep_link.empty()) {
 		LOG_VERBOSE(debug) << "No deep link";
@@ -194,7 +194,7 @@ void GetCourses(Bot& bot, const domain::Context& context) {
 		bot.EditMessage(context, result, keyboard, "HTML", true);
 	}
 
-	tx.commit();
+	bot.Commit();
 }
 
 extern const std::vector<CommandInfo> kCommands;
@@ -402,7 +402,7 @@ void GetCourse(Bot& bot, const domain::Context& context, std::string_view course
 		bot.SendMessage(context, result, keyboard, "HTML", true);
 	}
 
-	tx.commit();
+	bot.Commit();
 }
 
 void Courses(Bot& bot, std::deque<std::string_view>& path, const domain::Context& context) {
