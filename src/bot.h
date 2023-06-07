@@ -29,6 +29,8 @@ public:
 
 	[[nodiscard]] pqxx::work& BeginTransaction();
 
+	void Commit();
+
 	void EndTransaction();
 
 	[[nodiscard]] bool IsOwner(domain::UserID user) const;

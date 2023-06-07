@@ -153,12 +153,23 @@ void Bot::Run() {
 	return *current_transaction_;
 }
 
+void Bot::Commit() {
+	if (!current_transaction_) {
+		LOG(warning) << "No transaction to commit";
+	}
+
+	LOG(debug) << "Commit transaction";
+
+	current_transaction_->commit();
+	current_transaction_.reset();
+}
+
 void Bot::EndTransaction() {
 	if (!current_transaction_) {
 		return;
 	}
 
-	LOG(debug) << "End transaction";
+	LOG(debug) << "Force end transaction";
 
 	current_transaction_.reset();
 }

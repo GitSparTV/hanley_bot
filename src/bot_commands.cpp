@@ -476,14 +476,14 @@ void Subscriptions(Bot& bot, std::deque<std::string_view>& path, const domain::C
 	if (context.IsCallback()) {
 		bot.AnswerCallbackQuery(std::string(context.query_id), response, true, 2);
 
-		tx.commit();
+		bot.Commit();
 
 		return GetCourse(bot, context, course_id);
 	}
 
 	bot.SendMessage(context, response);
 
-	tx.commit();
+	bot.Commit();
 }
 
 static const std::unordered_map<std::string_view, StaticQueryInfo> kStaticQueries = {
