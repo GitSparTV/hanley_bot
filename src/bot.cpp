@@ -55,19 +55,21 @@ void Bot::Run() {
 		LOG(warning) << "Received unknown command: " << message->text << " " << hanley_bot::tg::debug::DumpMessage(message);
 	});
 
-	bot_.getEvents().onNonCommandMessage([this](TgBot::Message::Ptr message) {
-		if (tg::utils::IsPM(message->chat)) {
-			LOG(info) << message->from->id << " wrote: \"" << message->text << "\"";
-		}
-
-		LOG(debug) << tg::debug::DumpMessage(message);
-
+	bot_.getEvents().onAnyMessage([this](TgBot::Message::Ptr message) {
 		if (IsFromNewsThread(message) && !IsOwner(message)) {
 			LOG(info) << "A message was posted in news thread, deleted: " << tg::debug::DumpMessage(message);
 
 			GetAPI().deleteMessage(message->chat->id, message->messageId);
 			return;
 		}
+	});
+
+	bot_.getEvents().onNonCommandMessage([this](TgBot::Message::Ptr message) {
+		if (tg::utils::IsPM(message->chat)) {
+			LOG(info) << message->from->id << " wrote: \"" << message->text << "\"";
+		}
+
+		LOG(debug) << tg::debug::DumpMessage(message);
 
 		try {
 			dialogs_.HandleTextInput(message);
