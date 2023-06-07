@@ -154,6 +154,10 @@ void Bot::Run() {
 }
 
 void Bot::EndTransaction() {
+	if (!current_transaction_) {
+		return;
+	}
+
 	LOG(debug) << "End transaction";
 
 	current_transaction_.reset();
