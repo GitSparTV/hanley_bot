@@ -105,7 +105,7 @@ void Bot::Run() {
 					LOG_VERBOSE(warning) << "Query was too old. Answer was not sent";
 				}
 
-				LOG_VERBOSE(error) << "Unexpected error on AnswerCallbackQuery! " << ex.what();
+				LOG(error) << "Unexpected exception caught while calling AnswerCallbackQuery! " << ex.what();
 				SendMessage(query->message, "Произошла ошибка при выполнении запроса. Если ошибка повторяется, напишите владельцу");
 			}
 
