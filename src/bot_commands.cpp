@@ -1,17 +1,18 @@
-#include <pqxx/pqxx>
-
 #include <cassert>
 #include <charconv>
 #include <string>
 #include <vector>
 #include <deque>
 
+#include "sdk.h"
+#include <pqxx/pqxx>
 #include <fmt/format.h>
 #include <tgbot/types/BotCommand.h>
 #include <tgbot/types/Message.h>
 #include <tgbot/types/BotCommandScopeChat.h>
 #include <tgbot/types/BotCommandScopeDefault.h>
 #include <tgbot/types/BotCommandScopeAllGroupChats.h>
+#include <boost/json.hpp>
 
 #include "logging.h"
 #include "bot_commands.h"
@@ -64,44 +65,92 @@ std::string_view GetCommandArgument(std::string_view text) {
 	return text.substr(pos + 1);
 }
 
-void RemoveUser(uint64_t user_id) {
-	//pqxx::work tx{c};
+void RemoveUser(pqxx::work& tx, uint64_t user_id) {
+	tx.exec0(fmt::format("DELETE FROM users WHERE telegram_id = {}", user_id));
 
-	//tx.exec0(fmt::format("DELETE FROM users WHERE telegram_id = {}", user_id));
-
-	//tx.commit();
-
-	//std::cout << fmt::format("Removing user {} because he blocked the bot", user_id) << std::endl;
+	LOG_VERBOSE(info) << fmt::format("Removing user {} because he blocked the bot", user_id);
 }
 
-void Broadcast(TgBot::Message::Ptr original_message) {
-	//std::vector<std::pair<uint64_t, std::string>> users;
+void BroadcastAll(Bot& bot, const domain::Context& context) {
+	if (!context.message) {
+		LOG_VERBOSE(error) << "Broadcast called from unsupported context";
 
-	//pqxx::work tx{c};
+		return;
+	}
 
-	//users.reserve(tx.query_value<size_t>("SELECT COUNT(*) FROM users"));
+	if (!context.message->replyToMessage) {
+		bot.SendMessage(context, "Command must be called with replied message");
 
-	//for (auto& [id, name] : tx.query<uint64_t, std::string>("SELECT id, first_name FROM users")) {
-	//	users.emplace_back(id, name);
-	//}
+		return;
+	}
 
-	//tx.commit();
+	auto& tx = bot.BeginTransaction();
 
-	//std::vector<uint64_t> to_delete;
+	for (auto& [id, name] : tx.query<uint64_t, std::string>("SELECT telegram_id, first_name FROM users")) {
+		try {
+			bot.GetAPI().copyMessage(id, context.message->replyToMessage->chat->id, context.message->replyToMessage->messageId);
 
-	//for (const auto& [id, name] : users) {
-	//	try {
-	//		bot.getApi().copyMessage(id, original_message->chat->id, original_message->messageId);
-	//		std::this_thread::sleep_for(0.7s);
-	//	} catch (const TgBot::TgException& ex) {
-	//		if (ex.what() == "Forbidden: bot was blocked by the user") {
-	//			RemoveUser(id);
-	//		}
-	//	}
-	//}
+			std::this_thread::sleep_for(0.7s);
+		} catch (const TgBot::TgException& ex) {
+			if (ex.what() == "Forbidden: bot was blocked by the user"sv) {
+				RemoveUser(tx, id);
+			}
+		}
+	}
 }
 
-bool RegisterUser(Bot& bot, pqxx::work& tx, TgBot::User::Ptr user) {
+void BroadcastSubscriptionsTest(Bot& bot, const domain::Context& context) {
+	auto& tx = bot.BeginTransaction();
+
+	std::unordered_map<uint64_t, std::string> course_id_to_name;
+
+	for (auto [course_id, full_name] : tx.query<uint64_t, std::string>("SELECT id, full_name FROM courses")) {
+		course_id_to_name.emplace(course_id, std::move(full_name));
+	}
+
+	for (auto [id, courses_json] : tx.query<uint64_t, std::string>("SELECT users.telegram_id, JSON_AGG(subscriptions.course_id) as subscriptions FROM users LEFT JOIN subscriptions ON subscriptions.telegram_id = users.telegram_id GROUP BY users.telegram_id")) {
+		const auto json_value = boost::json::parse(courses_json);
+		const auto& courses_json_array = json_value.as_array();
+
+		std::vector<int64_t> courses;
+		courses.reserve(courses_json_array.size());
+
+		for (const auto& course_id_json : courses_json_array) {
+			if (course_id_json.is_int64()) {
+				courses.emplace_back(course_id_json.get_int64());
+			}
+		}
+
+		std::string result;
+
+		if (courses.empty()) {
+			result = "Привет!\nЕсли ты читаешь это сообщение, значит бот вас помнит.\n\nОднако бот не нашёл у тебя ни одной подписки на курс. :(\nЕсли это ошибка, напиши боту /courses и подпишись на интересующий курс";
+		} else {
+			result = "Привет!\nЕсли ты читаешь это сообщение, значит бот вас помнит. Проверь, что бот правильно запомнил какие курсы тебя интересуют:\n";
+
+			for (auto course_id : courses) {
+				result += fmt::format("\n<b>-</b> {}", course_id_to_name[course_id]);
+			}
+
+			result += "\n\nЕсли список неверный, напиши боту /courses и подпишись на интересующий курс";
+		}
+
+		try {
+			bot.SendMessage(id, result, {}, "HTML");
+
+			std::this_thread::sleep_for(0.5s);
+		} catch (const TgBot::TgException& ex) {
+			if (ex.what() == "Forbidden: bot was blocked by the user"sv) {
+				RemoveUser(tx, id);
+			}
+		}
+	}
+
+	bot.SendMessage(bot.GetOwnerID(), "Done");
+	bot.Commit();
+}
+
+bool RegisterUser(pqxx::work& tx, TgBot::User::Ptr user) {
 	if (tx.query_value<bool>(fmt::format("SELECT EXISTS(SELECT 1 FROM users WHERE telegram_id = {})", user->id))) {
 		LOG_VERBOSE(debug) << "User " << user->id << " already registered";
 
@@ -109,7 +158,7 @@ bool RegisterUser(Bot& bot, pqxx::work& tx, TgBot::User::Ptr user) {
 	}
 
 	tx.exec0(
-		fmt::format("INSERT INTO users (telegram_id, first_name, last_name) VALUES ({}, '{}', NULLIF('{}','')) ON CONFLICT (telegram_id) DO UPDATE SET first_name = excluded.first_name, last_name = excluded.last_name;",
+		fmt::format("INSERT INTO users (telegram_id, first_name, last_name) VALUES ({}, '{}', NULLIF('{}',''))",
 			user->id,
 			tx.esc(user->firstName),
 			tx.esc(user->lastName))
@@ -230,11 +279,28 @@ void LogLevel(Bot& bot, const domain::Context& context) {
 	//dialogs.Add<dialogs::MainCourseForm>(sent);
 }
 
+void Statistics(Bot& bot, const domain::Context& context) {
+	auto& tx = bot.BeginTransaction();
+
+	auto user_count = tx.query_value<uint64_t>("SELECT COUNT(id) FROM users");
+
+	std::string result = fmt::format("**Statistics**\nUser count: {}\n", user_count);
+
+	for (auto [short_name, count] : tx.query<std::string, uint64_t>("SELECT c.short_name, COUNT(s.telegram_id) FROM courses AS c LEFT JOIN subscriptions AS s ON c.id = s.course_id GROUP BY c.id, c.short_name ORDER BY c.id ASC")) {
+		result += fmt::format("\n**{}:** {}", short_name, count);
+	}
+
+	bot.SendMessage(context, result);
+}
+
 const std::vector<CommandInfo> kCommands = {
 	{"start", "Начать разговор", Start, Permission::kPublicHidden},
 	{"help", "Помощь", Help, Permission::kPublic},
 	{"courses", "Список курсов на русском языке от FTF", GetCourses, Permission::kPublic},
-	{"loglevel", "Change Boost.Log severity", LogLevel, Permission::kOwner}
+	{"loglevel", "Change Boost.Log severity", LogLevel, Permission::kOwner},
+	{"stats", "Statistics", Statistics, Permission::kOwner},
+	{"broadcast", "Broadcast message to everyone", BroadcastAll, Permission::kOwner},
+	{"broadcast_s", "Broadcast their subscriptions", BroadcastSubscriptionsTest, Permission::kOwner},
 };
 
 void PushCommands(Bot& bot) {
