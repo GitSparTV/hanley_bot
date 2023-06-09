@@ -153,15 +153,17 @@ Value MainCourseForm::InputEmail::OnCallback([[maybe_unused]] Self self, std::st
 }
 
 Value MainCourseForm::InputWantsCredentialing::OnEnter(Self self) {
+	using enum tg::utils::ButtonType;
+
 	std::cout << "Хотите реестр?" << std::endl;
 
 	tg::utils::MakeKeyboard keyboard{
 		{
-			{tg::utils::ButtonType::kCallback, "Да", "yes"},
-			{tg::utils::ButtonType::kCallback, "Нет", "no"}
+			{kCallback, "Да", "yes"},
+			{kCallback, "Нет", "no"}
 		},
 		{
-			{tg::utils::ButtonType::kCallback, "< Назад", "back"}
+			{kCallback, "< Назад", "back"}
 		}
 	};
 
