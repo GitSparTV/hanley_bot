@@ -105,10 +105,11 @@ void Bot::Run() {
 			} catch (std::exception& ex) {
 				if (std::string_view(ex.what()).find("query is too old") != std::string_view::npos) {
 					LOG_VERBOSE(warning) << "Query was too old. Answer was not sent";
+					SendMessage(query->message, "Кажется, бот спал пока вы ему писали, повторите действие. Если ошибка повторяется, напишите владельцу");
+				} else {
+					LOG(error) << "Unexpected exception caught while calling AnswerCallbackQuery! " << ex.what();
+					SendMessage(query->message, "Произошла ошибка при выполнении запроса. Если ошибка повторяется, напишите владельцу");
 				}
-
-				LOG(error) << "Unexpected exception caught while calling AnswerCallbackQuery! " << ex.what();
-				SendMessage(query->message, "Произошла ошибка при выполнении запроса. Если ошибка повторяется, напишите владельцу");
 			}
 
 			LOG(error) << "Exception caught during callback query (" << typeid(ex).name() << "): " << ex.what();
