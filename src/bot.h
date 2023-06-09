@@ -24,6 +24,11 @@ class Bot {
 public:
 	explicit Bot(config::Config& config);
 
+	Bot(const Bot&) = delete;
+	Bot(Bot&&) = delete;
+	Bot& operator=(const Bot&) = delete;
+	Bot& operator=(Bot&&) = delete;
+
 public:
 	void Run();
 
