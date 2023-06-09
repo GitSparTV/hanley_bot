@@ -176,13 +176,11 @@ void Start(Bot& bot, const domain::Context& context) {
 		return;
 	}
 
-	static constexpr std::string_view kStartCommand = "/start";
-
 	const std::string& text = context.message->text;
 	auto deep_link = GetCommandArgument(text);
 
 	auto& tx = bot.BeginTransaction();
-	bool registered = RegisterUser(bot, tx, context.message->from);
+	bool registered = RegisterUser(tx, context.message->from);
 
 	if (registered || (!registered && deep_link.empty())) {
 		bot.SendMessage(context.message, "Привет!\nЭто бот русскоязычной группы [\"Хенли. ПФА&ТОН\"](t.me/ruspfasbt).\n*Что он умеет?*\n\nБот поможет зарегистрироваться на потоки обучения, а если их ещё нет, то подписаться на уведомления на те курсы, что вас интересуют.\nДля тех, кто уже учится на потоке, этот бот поможет вам активировать курс, получать новости группы и другое.\n\n*Как пользоваться ботом?*\n\nНачните с ним общение в этом чате.\nПосмотрите в нижний левый угол, там будет синяя кнопка-меню (☰) с доступными командами. Если не видите, напишите */help* (Можно нажать прямо здесь)\nНа данный момент доступна только подписка на новости :)\n\n_ℹ️ Организация курсов делается безвозмездно, во благо популяризации и развития подхода в русскоязычном сообществе._\n\nЕсли увидели неисправность, хотите поблагодарить, пожертвовать или задать вопрос, напишите [мне](t.me/savvatelegram).", {}, "Markdown", true);
@@ -211,9 +209,9 @@ void GetCourses(Bot& bot, const domain::Context& context) {
 		return;
 	}
 
-	static constexpr std::string_view kHeader = "Про все курсы и процесс сертификации можно почитать <a href=\"https://abasavva.notion.site/4b49aea6d6964c359039545d198ef7a2\">здесь</a>.\n";
-	static constexpr size_t kAverageCourseNameLength = 30 * 2;
-	static constexpr size_t kStartSize = kHeader.size() + kAverageCourseNameLength * 10;
+	constexpr std::string_view kHeader = "Про все курсы и процесс сертификации можно почитать <a href=\"https://abasavva.notion.site/4b49aea6d6964c359039545d198ef7a2\">здесь</a>.\n";
+	constexpr size_t kAverageCourseNameLength = 30ULL * 2ULL;
+	constexpr size_t kStartSize = kHeader.size() + kAverageCourseNameLength * 10ULL;
 
 	std::string result;
 
@@ -222,7 +220,7 @@ void GetCourses(Bot& bot, const domain::Context& context) {
 
 	tg::utils::KeyboardBuilder keyboard;
 
-	static constexpr int kButtonsPerRow = 3;
+	constexpr int kButtonsPerRow = 3;
 	auto row = keyboard.Row();
 
 	auto& tx = bot.BeginTransaction();
@@ -353,16 +351,14 @@ void InitializeCommands(Bot& bot) {
 }
 
 std::deque<std::string_view> SplitPath(std::string_view path) {
-	static constexpr char kSeparator = '_';
+	constexpr char kSeparator = '_';
 
 	std::deque<std::string_view> split_path;
 
 	while (true) {
 		auto separator = path.find_first_of(kSeparator);
 
-		auto part = path.substr(0, separator);
-
-		if (!part.empty()) {
+		if (auto part = path.substr(0, separator); !part.empty()) {
 			split_path.emplace_back(part);
 		}
 
@@ -392,13 +388,13 @@ std::string Pad3Digits(int number) {
 		return serialized;
 	}
 
-	auto div = std::lldiv(size, 3);
+	auto [div, rem] = std::lldiv(static_cast<long long>(size), 3LL);
 
-	auto new_size = size + (div.quot - (div.rem ? 0 : 1));
+	auto new_size = size + (static_cast<size_t>(div) - (rem ? 0 : 1));
 
 	serialized.reserve(new_size);
 
-	for (size_t s = (div.rem ? div.rem : 3), offset = 0; s != size; s += 3, ++offset) {
+	for (size_t s = (rem ? static_cast<size_t>(rem) : 3ULL), offset = 0ULL; s != size; s += 3ULL, ++offset) {
 		serialized.insert(s + offset, 1, ' ');
 	}
 
@@ -424,7 +420,10 @@ void InsertExchanges(Bot& bot, std::string& text) {
 		auto status = std::from_chars(piece.data(), piece.data() + piece.size(), price);
 
 		if (status.ec == std::errc{}) {
-			text.insert(status.ptr - text.data(), fmt::format(" (Примерно {}₽ на текущий день)", Pad3Digits(static_cast<int>(price * rate))));
+			auto converted_padded_price = Pad3Digits(static_cast<int>(price * rate));
+
+			text.insert(static_cast<size_t>(status.ptr - text.data()),
+				fmt::format(" (Примерно {}₽ на текущий день)", converted_padded_price));
 		}
 
 		last_pos = pos + 1;
