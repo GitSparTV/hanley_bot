@@ -289,7 +289,7 @@ void Statistics(Bot& bot, const domain::Context& context) {
 		result += fmt::format("\n**{}:** {}", short_name, count);
 	}
 
-	bot.SendMessage(context, result);
+	bot.SendMessage(context, result, {}, "Markdown");
 }
 
 const std::vector<CommandInfo> kCommands = {
