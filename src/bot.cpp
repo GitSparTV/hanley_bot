@@ -201,6 +201,7 @@ void Bot::RegisterCommand(const std::string& name, const TgBot::EventBroadcaster
 TgBot::Message::Ptr Bot::SendMessage(domain::ChatID chat_id, const std::string& text,
 	TgBot::GenericReply::Ptr replyMarkup, const std::string& parseMode, bool disableWebPagePreview,
 	bool protectContent, bool disableNotification, domain::ThreadID thread_id) {
+	LOG_VERBOSE(trace) << fmt::format("SendMessage to {}. Length: {}.", chat_id, text.size());
 
 	return GetAPI().sendMessage(chat_id, text, disableWebPagePreview, 0, std::move(replyMarkup), parseMode, disableNotification, {}, false, protectContent, thread_id);
 }
@@ -222,6 +223,7 @@ TgBot::Message::Ptr Bot::SendMessage(const TgBot::Message::Ptr& get_from_message
 TgBot::Message::Ptr Bot::EditMessage(domain::ChatID chat_id, domain::MessageID message_id, const std::string& text,
 	TgBot::GenericReply::Ptr replyMarkup,
 	const std::string& parseMode, bool disableWebPagePreview) {
+	LOG_VERBOSE(trace) << fmt::format("EditMesage in {} id={}. Length: {}.", chat_id, message_id, text.size());
 
 	return GetAPI().editMessageText(text, chat_id, message_id, "", parseMode, disableWebPagePreview, std::move(replyMarkup), {});
 }
@@ -255,6 +257,8 @@ void Bot::AnswerCallbackQuery(const std::string& query_id, const std::string& te
 	}
 
 	last_query_id = query_id;
+
+	LOG_VERBOSE(trace) << fmt::format("AnswerCallbackQuery {}. msg_len={}", query_id, text.size());
 
 	GetAPI().answerCallbackQuery(query_id, text, show_alert, "", cache_time);
 }
