@@ -9,8 +9,8 @@
 #include <boost/log/expressions.hpp>
 #include <boost/log/utility/manipulators/add_value.hpp>
 
-BOOST_LOG_ATTRIBUTE_KEYWORD(file, "File", std::string_view)
-BOOST_LOG_ATTRIBUTE_KEYWORD(file_line, "LineN", int)
+BOOST_LOG_ATTRIBUTE_KEYWORD(log_file_name, "File", std::string_view)
+BOOST_LOG_ATTRIBUTE_KEYWORD(log_file_line, "LineN", int)
 
 namespace hanley_bot::logger {
 
@@ -25,5 +25,5 @@ constexpr std::string_view ExtractFileName(std::string_view file) {
 
 } // namespace hanley_bot::logger
 
-#define LOG_VERBOSE(severity) BOOST_LOG_TRIVIAL(severity) << boost::log::add_value("File",hanley_bot::logger::ExtractFileName(__FILE__)) << boost::log::add_value("LineN", __LINE__)
+#define LOG_VERBOSE(severity) BOOST_LOG_TRIVIAL(severity) << boost::log::add_value(log_file_name,hanley_bot::logger::ExtractFileName(__FILE__)) << boost::log::add_value(log_file_line, __LINE__)
 #define LOG(severity) BOOST_LOG_TRIVIAL(severity)

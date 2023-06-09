@@ -24,12 +24,12 @@ namespace hanley_bot::logger {
 void Format(logging::record_view const& rec, logging::formatting_ostream& strm) {
 	namespace expr = boost::log::expressions;
 
-	auto ts = *rec[timestamp];
+	const auto& ts = *rec[timestamp];
 	strm << '[' << rec[logging::trivial::severity] << "]\t[";
 	strm << to_iso_extended_string(ts) << "]\t";
 
-	if (!rec[file].empty()) {
-		strm << '[' << rec[file] << ':' << rec[file_line] << "]\t";
+	if (!rec[log_file_name].empty()) {
+		strm << '[' << rec[log_file_name] << ':' << rec[log_file_line] << "]\t";
 	}
 
 	strm << rec[expr::smessage];
