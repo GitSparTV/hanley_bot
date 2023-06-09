@@ -56,19 +56,19 @@ KeyboardBuilder::OneRow& KeyboardBuilder::OneRow::Insert(TgBot::InlineKeyboardBu
 }
 
 KeyboardBuilder::OneRow& KeyboardBuilder::OneRow::Callback(std::string_view text, std::string_view data) {
-	TgBot::InlineKeyboardButton button = {
-		.text = std::string(text),
-		.callbackData = std::string(data)
-	};
+	TgBot::InlineKeyboardButton button;
+
+	button.text = std::string(text);
+	button.callbackData = std::string(data);
 
 	return Insert(std::move(button));
 }
 
 KeyboardBuilder::OneRow& KeyboardBuilder::OneRow::Link(std::string_view text, std::string_view link) {
-	TgBot::InlineKeyboardButton button = {
-		.text = std::string(text),
-		.url = std::string(link)
-	};
+	TgBot::InlineKeyboardButton button;
+
+	button.text = std::string(text);
+	button.url = std::string(link);
 
 	return Insert(std::move(button));
 }

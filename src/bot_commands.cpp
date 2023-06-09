@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <deque>
+#include <thread>
 
 #include "sdk.h"
 #include <pqxx/pqxx>
@@ -99,7 +100,7 @@ void BroadcastAll(Bot& bot, const domain::Context& context) {
 	}
 }
 
-void BroadcastSubscriptionsTest(Bot& bot, const domain::Context& context) {
+void BroadcastSubscriptionsTest(Bot& bot, [[maybe_unused]] const domain::Context& context) {
 	auto& tx = bot.BeginTransaction();
 
 	std::unordered_map<uint64_t, std::string> course_id_to_name;

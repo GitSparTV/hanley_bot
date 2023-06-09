@@ -9,6 +9,7 @@ Context Context::FromCommand(const TgBot::Message::Ptr& message) {
 		.origin_thread = message->messageThreadId,
 		.type = InvokeType::kUserCommand,
 		.message = message,
+		.query_id{},
 	};
 }
 
