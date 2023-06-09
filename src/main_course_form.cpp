@@ -322,7 +322,7 @@ Value MainCourseForm::Confirm::OnEnter(Self self) {
 	return false;
 }
 
-Value MainCourseForm::Confirm::OnCallback(Self self, std::string_view data) {
+Value MainCourseForm::Confirm::OnCallback([[maybe_unused]] Self self, std::string_view data) {
 	if (data == "confirm") {
 		// Register()
 		return true;
