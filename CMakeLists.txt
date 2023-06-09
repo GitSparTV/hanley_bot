@@ -40,5 +40,11 @@ add_executable(hanley_bot
 	src/currency_extension.cpp
 	src/currency_extension.h
 	)
+
+target_compile_options(hanley_bot PRIVATE
+	$<$<CXX_COMPILER_ID:MSVC>:/W4>
+	$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic>
+)
+
 target_include_directories(hanley_bot PRIVATE CONAN_PKG::tgbot CONAN_PKG::boost CONAN_PKG::libpqxx CONAN_PKG::fmt)
 target_link_libraries(hanley_bot PRIVATE CONAN_PKG::tgbot CONAN_PKG::boost CONAN_PKG::libpqxx CONAN_PKG::fmt)
