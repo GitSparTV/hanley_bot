@@ -283,7 +283,7 @@ void Statistics(Bot& bot, const domain::Context& context) {
 
 	auto user_count = tx.query_value<uint64_t>("SELECT COUNT(id) FROM users");
 
-	std::string result = fmt::format("*Statistics*\nUser count: {}\n", user_count);
+	std::string result = fmt::format("*Statistics*\n*User count*: {}\n", user_count);
 
 	for (auto [short_name, count] : tx.query<std::string, uint64_t>("SELECT c.short_name, COUNT(s.telegram_id) FROM courses AS c LEFT JOIN subscriptions AS s ON c.id = s.course_id GROUP BY c.id, c.short_name ORDER BY c.id ASC")) {
 		result += fmt::format("\n*{}:* {}", short_name, count);
