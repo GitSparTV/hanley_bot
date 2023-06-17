@@ -100,57 +100,6 @@ void BroadcastAll(Bot& bot, const domain::Context& context) {
 	}
 }
 
-void BroadcastSubscriptionsTest(Bot& bot, [[maybe_unused]] const domain::Context& context) {
-	auto& tx = bot.BeginTransaction();
-
-	std::unordered_map<uint64_t, std::string> course_id_to_name;
-
-	for (auto [course_id, full_name] : tx.query<uint64_t, std::string>("SELECT id, full_name FROM courses")) {
-		course_id_to_name.emplace(course_id, std::move(full_name));
-	}
-
-	for (auto [id, courses_json] : tx.query<uint64_t, std::string>("SELECT users.telegram_id, JSON_AGG(subscriptions.course_id) as subscriptions FROM users LEFT JOIN subscriptions ON subscriptions.telegram_id = users.telegram_id GROUP BY users.telegram_id")) {
-		const auto json_value = boost::json::parse(courses_json);
-		const auto& courses_json_array = json_value.as_array();
-
-		std::vector<int64_t> courses;
-		courses.reserve(courses_json_array.size());
-
-		for (const auto& course_id_json : courses_json_array) {
-			if (course_id_json.is_int64()) {
-				courses.emplace_back(course_id_json.get_int64());
-			}
-		}
-
-		std::string result;
-
-		if (courses.empty()) {
-			result = "Привет!\nЕсли ты читаешь это сообщение, значит бот вас помнит.\n\nОднако бот не нашёл у тебя ни одной подписки на курс. :(\nЕсли это ошибка, напиши боту /courses и подпишись на интересующий курс";
-		} else {
-			result = "Привет!\nЕсли ты читаешь это сообщение, значит бот вас помнит. Проверь, что бот правильно запомнил какие курсы тебя интересуют:\n";
-
-			for (auto course_id : courses) {
-				result += fmt::format("\n<b>-</b> {}", course_id_to_name[course_id]);
-			}
-
-			result += "\n\nЕсли список неверный, напиши боту /courses и подпишись на интересующий курс";
-		}
-
-		try {
-			bot.SendMessage(id, result, {}, "HTML");
-
-			std::this_thread::sleep_for(0.5s);
-		} catch (const TgBot::TgException& ex) {
-			if (ex.what() == "Forbidden: bot was blocked by the user"sv) {
-				RemoveUser(tx, id);
-			}
-		}
-	}
-
-	bot.SendMessage(bot.GetOwnerID(), "Done");
-	bot.Commit();
-}
-
 bool RegisterUser(pqxx::work& tx, TgBot::User::Ptr user) {
 	if (tx.query_value<bool>(fmt::format("SELECT EXISTS(SELECT 1 FROM users WHERE telegram_id = {})", user->id))) {
 		LOG_VERBOSE(debug) << "User " << user->id << " already registered";
