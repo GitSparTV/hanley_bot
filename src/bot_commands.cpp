@@ -140,6 +140,7 @@ void Start(Bot& bot, const domain::Context& context) {
 
 	if (deep_link.empty()) {
 		LOG_VERBOSE(debug) << "No deep link";
+
 		return;
 	}
 
@@ -194,6 +195,16 @@ void GetCourses(Bot& bot, const domain::Context& context) {
 	bot.Commit();
 }
 
+void GetGroups(Bot& bot, const domain::Context& context) {
+	if (!context.IsPM()) {
+		LOG_VERBOSE(warning) << "Invoked from invalid context: " << tg::debug::DumpContext(context);
+
+		return;
+	}
+
+
+}
+
 extern const std::vector<CommandInfo> kCommands;
 
 void Help(Bot& bot, const domain::Context& context) {
@@ -241,14 +252,25 @@ void Statistics(Bot& bot, const domain::Context& context) {
 	bot.SendMessage(context, result, {}, "Markdown");
 }
 
+void ShowMe(Bot& bot, const domain::Context& context) {
+	tg::utils::MakeKeyboard keyboard{
+		{
+			{tg::utils::ButtonType::kLink, "🤖 Перейти к диалогу", "t.me/ruspfasbt_bot"}
+		}
+	};
+
+	bot.SendMessage(context, "Если хотите получать первым новости о курсах или зарегистрироваться на обучение, это можно сделать в диалоге со мной – ботом группы \"Хенли. ПФА&ТОН\".", keyboard);
+}
+
 const std::vector<CommandInfo> kCommands = {
 	{"start", "Начать разговор", Start, Permission::kPublicHidden},
 	{"help", "Помощь", Help, Permission::kPublic},
 	{"courses", "Список курсов на русском языке от FTF", GetCourses, Permission::kPublic},
+	{"groups", "Список открытых групп на обучение", GetGroups, Permission::kOwner},
 	{"loglevel", "Change Boost.Log severity", LogLevel, Permission::kOwner},
 	{"stats", "Statistics", Statistics, Permission::kOwner},
 	{"broadcast", "Broadcast message to everyone", BroadcastAll, Permission::kOwner},
-	{"broadcast_s", "Broadcast their subscriptions", BroadcastSubscriptionsTest, Permission::kOwner},
+	{"showme", "Show invitation message", ShowMe, Permission::kOwner},
 };
 
 void PushCommands(Bot& bot) {
