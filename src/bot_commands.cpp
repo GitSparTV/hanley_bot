@@ -233,9 +233,6 @@ void LogLevel(Bot& bot, const domain::Context& context) {
 	logger::ChangeSeverityFilter(severity);
 
 	bot.SendMessage(context, fmt::format("Changed severity to {}", severity));
-	//auto sent = bot.getApi().sendMessage(message->chat->id, "MainCourseForm test");
-
-	//dialogs.Add<dialogs::MainCourseForm>(sent);
 }
 
 void Statistics(Bot& bot, const domain::Context& context) {
