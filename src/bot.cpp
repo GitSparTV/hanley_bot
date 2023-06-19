@@ -190,6 +190,10 @@ void Bot::EndTransaction() {
 	return bot_.getApi();
 }
 
+state::StatesController& Bot::GetDialogs() {
+	return dialogs_;
+}
+
 [[nodiscard]] domain::UserID Bot::GetOwnerID() const {
 	return config_.bot_config.owner_id;
 }

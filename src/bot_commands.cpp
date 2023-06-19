@@ -386,12 +386,12 @@ void InsertExchanges(Bot& bot, std::string& text) {
 
 		auto piece = std::string_view(text).substr(pos + 1);
 
-		auto status = std::from_chars(piece.data(), piece.data() + piece.size(), price);
+		auto [last_char, status] = std::from_chars(piece.data(), piece.data() + piece.size(), price);
 
-		if (status.ec == std::errc{}) {
+		if (status == std::errc{}) {
 			auto converted_padded_price = Pad3Digits(static_cast<int>(price * rate));
 
-			text.insert(static_cast<size_t>(status.ptr - text.data()),
+			text.insert(static_cast<size_t>(last_char - text.data()),
 				fmt::format(" (Примерно {}₽ на текущий день)", converted_padded_price));
 		}
 
@@ -551,7 +551,7 @@ void CallCommand(Bot& bot, std::string path, const domain::Context& context) {
 
 	const auto& [callback, permission] = entrypoint->second;
 
-	if (permission == Permission::kOwner && bot.IsOwner(context.user)) {
+	if (permission == Permission::kOwner && !bot.IsOwner(context.user)) {
 		LOG_VERBOSE(warning) << fmt::format("Access denied. path={} context={}", path, tg::debug::DumpContext(context));
 
 		return;

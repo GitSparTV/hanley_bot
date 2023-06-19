@@ -52,6 +52,8 @@ public:
 
 	[[nodiscard]] const TgBot::Api& GetAPI();
 
+	[[nodiscard]] state::StatesController& GetDialogs();
+
 	[[nodiscard]] domain::UserID GetOwnerID() const;
 
 	void RegisterCommand(const std::string& name, const TgBot::EventBroadcaster::MessageListener& listener);
