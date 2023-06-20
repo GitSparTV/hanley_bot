@@ -69,7 +69,6 @@ private:
 template<typename Machine>
 class StateBase {
 public:
-	using Holds = typename Machine::States;
 	using Self = Machine&;
 	using Message = const TgBot::Message::Ptr&;
 	using Value = StateValue;

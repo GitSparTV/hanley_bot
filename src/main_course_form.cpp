@@ -33,7 +33,7 @@ auto MainCourseForm::Start::OnCallback([[maybe_unused]] Self self, std::string_v
 		// Call static/groups/get/n
 		return true;
 	} else {
-		return false;
+		return Value::Unreachable();
 	}
 }
 
@@ -65,7 +65,7 @@ auto MainCourseForm::InputFirstName::OnCallback([[maybe_unused]] Self self, std:
 	if (data == "d_back") {
 		return Value::PopState();
 	} else {
-		return false;
+		return Value::Unreachable();
 	}
 }
 
@@ -97,7 +97,7 @@ auto MainCourseForm::InputLastName::OnCallback([[maybe_unused]] Self self, std::
 	if (data == "d_back") {
 		return Value::PopState();
 	} else {
-		return false;
+		return Value::Unreachable();
 	}
 }
 
@@ -143,7 +143,7 @@ auto MainCourseForm::InputEmail::OnCallback([[maybe_unused]] Self self, std::str
 	if (data == "d_back") {
 		return Value::PopState();
 	} else {
-		return false;
+		return Value::Unreachable();
 	}
 }
 
@@ -175,7 +175,7 @@ auto MainCourseForm::InputWantsCredentialing::OnCallback([[maybe_unused]] Self s
 	} else if (data == "d_back") {
 		return Value::PopState();
 	} else {
-		return false;
+		return Value::Unreachable();
 	}
 
 	return States::INPUT_PAYMENT_TYPE;
@@ -221,7 +221,7 @@ auto MainCourseForm::InputPaymentType::OnCallback([[maybe_unused]] Self self, st
 	} else if (data == "d_back") {
 		return Value::PopState();
 	} else {
-		return false;
+		return Value::Unreachable();
 	}
 
 	return States::INPUT_NEEDS_TRANSLATION;
@@ -262,7 +262,7 @@ auto MainCourseForm::InputNeedsTranslation::OnCallback([[maybe_unused]] Self sel
 	} else if (data == "d_back") {
 		return Value::PopState();
 	} else {
-		return false;
+		return Value::Unreachable();
 	}
 
 	return States::CONFIRM;
@@ -296,7 +296,7 @@ auto MainCourseForm::InputEnglishLevel::OnCallback([[maybe_unused]] Self self, s
 	if (data == "d_back") {
 		return Value::PopState();
 	} else {
-		return false;
+		return Value::Unreachable();
 	}
 }
 
@@ -324,7 +324,7 @@ auto MainCourseForm::Confirm::OnCallback([[maybe_unused]] Self self, std::string
 	} else if (data == "d_back") {
 		return Value::PopState();
 	} else {
-		return false;
+		return Value::Unreachable();
 	}
 }
 
