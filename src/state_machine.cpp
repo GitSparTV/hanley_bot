@@ -8,15 +8,13 @@
 
 namespace hanley_bot::state {
 
-void StateMachine::Link(StatesController& controller, TgBot::Message::Ptr message) {
+void StateMachine::Link(StatesController& controller, const domain::Context& context) {
 	controller_ = &controller;
-	message_ = std::move(message);
+	context_ = context;
 }
 
-TgBot::Message::Ptr StateMachine::GetMessage() const {
-	assert(message_);
-
-	return message_;
+const domain::Context& StateMachine::GetContext() const {
+	return context_;
 }
 
 hanley_bot::Bot& StateMachine::GetBot() {
@@ -28,7 +26,7 @@ hanley_bot::Bot& StateMachine::GetBot() {
 void StateMachine::ListenForInput() {
 	assert(controller_);
 
-	controller_->ListenForInput(GetMessage());
+	controller_->ListenForInput(GetContext());
 }
 
 } // namespace hanley_bot::state

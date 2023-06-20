@@ -4,7 +4,7 @@
 
 #include <tgbot/types/Message.h>
 
-//#undef GetMessage
+#include "domain.h"
 
 namespace hanley_bot {
 
@@ -27,9 +27,9 @@ public:
 	virtual void OnCallback(std::string_view data) = 0;
 
 public:
-	void Link(StatesController& controller, TgBot::Message::Ptr message);
+	void Link(StatesController& controller, const domain::Context& message);
 
-	TgBot::Message::Ptr GetMessage() const;
+	const domain::Context& GetContext() const;
 
 	hanley_bot::Bot& GetBot();
 
@@ -37,7 +37,7 @@ public:
 
 private:
 	StatesController* controller_ = nullptr;
-	TgBot::Message::Ptr message_;
+	domain::Context context_;
 };
 
 } // namespace hanley_bot::state

@@ -21,16 +21,14 @@ namespace hanley_bot::state {
 
 namespace utils {
 
-template<typename Machine, typename Enum>
-constexpr void EnumCheck() {
-	static_assert(std::is_same_v<typename Machine::States, Enum>, "cannot initialize State with different enum. Must be equal to Machine::States");
-}
+template<typename Enum, typename Machine>
+concept StatesOf = std::is_same_v<typename Machine::States, Enum>;
 
 template<typename Machine>
 struct FactoryCreator {
 public:
 	using ReturnType = typename Machine::StatePtr;
-	using EnumType = typename Machine::States;
+	using States = typename Machine::States;
 	using FactoryType = ReturnType(*)();
 
 	static std::vector<FactoryType>& GetStorage() {
@@ -56,13 +54,13 @@ public:
 	};
 #endif // !NDEBUG
 
-	template<typename T, EnumType enum_index>
+	template<typename T, States state>
 	static std::nullptr_t Register() {
 #ifndef NDEBUG
 		static const DuplicateCheck<T> check;
 #endif // !NDEBUG
 
-		static constexpr auto index = static_cast<size_t>(enum_index);
+		static constexpr auto index = static_cast<size_t>(state);
 
 		auto& storage = GetStorage();
 
@@ -82,10 +80,10 @@ public:
 		return nullptr;
 	}
 
-	static ReturnType Create(EnumType enum_index) {
-		const auto index = static_cast<size_t>(enum_index);
+	static ReturnType Create(States state) {
+		const auto index = static_cast<size_t>(state);
 
-		auto& storage = GetStorage();
+		const auto& storage = GetStorage();
 
 		assert(storage.size() >= index);
 
@@ -96,51 +94,55 @@ public:
 } // namespace utils
 
 template<typename Machine>
-class StateMachineBase : public std::enable_shared_from_this<Machine>, public StateMachine {
+class StateMachineBase : public StateMachine {
 public:
 	using MyStateBase = StateBase<Machine>;
 	using StatePtr = std::unique_ptr<MyStateBase>;
 	using StateFactory = utils::FactoryCreator<Machine>;
 
-	template<typename Derived, auto Enum> requires std::is_enum_v<decltype(Enum)>
+	template<typename Derived, utils::StatesOf<Machine> auto MyStates>
 	struct State : public MyStateBase {
-		static inline auto Registrator = StateFactory::template Register<Derived, Enum>();
-
-		using Value = MyStateBase::Value;
+		static inline auto Registrator = StateFactory::template Register<Derived, MyStates>();
 	};
 
 protected:
-	explicit StateMachineBase(StatePtr initial_state) : state_(std::move(initial_state)) {}
-
-	template<typename Enum> requires std::is_enum_v<Enum>
-	explicit StateMachineBase(Enum enum_index) : StateMachineBase(StateFactory::Create(enum_index)) {
-		utils::EnumCheck<Machine, Enum>();
+	explicit StateMachineBase(StatePtr&& initial_state) {
+		PushState(std::move(initial_state));
 	}
+
+	template<utils::StatesOf<Machine> MyStates>
+	explicit StateMachineBase(MyStates state) : StateMachineBase(StateFactory::Create(state)) {}
 
 public:
 	StatePtr& GetState() {
-		return state_;
+		assert(!states_.empty());
+
+		return states_.back();
 	}
 
-	template<typename Enum> requires std::is_enum_v<Enum>
-	StatePtr& SetState(Enum enum_index) {
-		utils::EnumCheck<Machine, Enum>();
-
-		return SetState(StateFactory::Create(enum_index));
+	template<utils::StatesOf<Machine> MyStates>
+	StatePtr& PushState(MyStates state) {
+		return PushState(StateFactory::Create(state));
 	}
 
-	StatePtr& SetState(StatePtr state) {
-		GetState() = std::move(state);
+	StatePtr& PushState(StatePtr state) {
+		return states_.emplace_back(std::move(state));
+	}
 
-		return GetState();
+	StatePtr PopState() {
+		auto back = states_.back();
+
+		states_.pop_back();
+
+		return back;
 	}
 
 public:
 	void EnterState() final {
-		typename MyStateBase::Value result = GetState()->OnEnter(this->shared_from_this());
+		StateValue result = GetState()->OnEnter(static_cast<Machine&>(*this));
 
 		if (result) {
-			SetState(result.ToEnum());
+			PushState(result.ToEnum<typename Machine::States>());
 
 			EnterState();
 		} else {
@@ -149,10 +151,10 @@ public:
 	}
 
 	void OnInput(const TgBot::Message::Ptr& input_message) final {
-		typename MyStateBase::Value result = GetState()->OnInput(this->shared_from_this(), input_message);
+		StateValue result = GetState()->OnInput(static_cast<Machine&>(*this), input_message);
 
 		if (result) {
-			SetState(result.ToEnum());
+			PushState(result.ToEnum<typename Machine::States>());
 
 			EnterState();
 		} else {
@@ -161,10 +163,10 @@ public:
 	}
 
 	void OnCallback(std::string_view data) final {
-		typename MyStateBase::Value result = GetState()->OnCallback(this->shared_from_this(), data);
+		StateValue result = GetState()->OnCallback(static_cast<Machine&>(*this), data);
 
 		if (result) {
-			SetState(result.ToEnum());
+			PushState(result.ToEnum<typename Machine::States>());
 
 			EnterState();
 		} else {
@@ -173,7 +175,7 @@ public:
 	}
 
 private:
-	StatePtr state_;
+	std::vector<StatePtr> states_;
 };
 
 } // namespace hanley_bot::state

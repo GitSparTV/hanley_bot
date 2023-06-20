@@ -12,115 +12,119 @@ namespace hanley_bot::state {
 StatesController::StatesController(hanley_bot::Bot& bot) : bot_(bot) {}
 
 void StatesController::CollectGargabe() {
-    auto chat_it = std::begin(machines_);
-    auto chat_end_it = std::end(machines_);
+	auto chat_it = std::begin(machines_);
+	auto chat_end_it = std::end(machines_);
 
-    auto now = std::chrono::system_clock::now();
+	auto now = std::chrono::system_clock::now();
 
-    while (chat_it != chat_end_it) {
-        auto& chat_machines = chat_it->second;
+	while (chat_it != chat_end_it) {
+		auto& chat_machines = chat_it->second;
 
-        auto message_it = std::begin(chat_machines);
-        auto message_end_it = std::end(chat_machines);
+		auto message_it = std::begin(chat_machines);
+		auto message_end_it = std::end(chat_machines);
 
-        while (message_it != message_end_it) {
-            const auto& [_, machine_info] = *message_it;
-            const auto& [machine, timestamp] = machine_info;
+		while (message_it != message_end_it) {
+			const auto& [_, machine_info] = *message_it;
+			const auto& [machine, timestamp] = machine_info;
 
-            if (std::chrono::days{2} < now - timestamp) {
-                message_it = chat_machines.erase(message_it);
-            } else {
-                ++message_it;
-            }
-        }
+			if (std::chrono::days{2} < now - timestamp) {
+				message_it = chat_machines.erase(message_it);
+			} else {
+				++message_it;
+			}
+		}
 
-        if (chat_machines.empty()) {
-            chat_it = machines_.erase(chat_it);
-        } else {
-            ++chat_it;
-        }
-    }
+		if (chat_machines.empty()) {
+			chat_it = machines_.erase(chat_it);
+		} else {
+			++chat_it;
+		}
+	}
 }
 
 void StatesController::CheckForGarbage() {
-    ++garbage_trigger_;
+	++garbage_trigger_;
 
-    if (garbage_trigger_ == kGarbageThreshold) {
-        garbage_trigger_ = 0;
+	if (garbage_trigger_ == kGarbageThreshold) {
+		garbage_trigger_ = 0;
 
-        CollectGargabe();
-    }
+		CollectGargabe();
+	}
 }
 
 void StatesController::Remove(const TgBot::Message::Ptr& message) {
-    GetMachine(message).reset();
+	GetMachine(message).reset();
 }
 
 std::shared_ptr<StateMachine>& StatesController::GetMachine(const TgBot::Message::Ptr& message) {
-    static std::shared_ptr<StateMachine> empty;
+	static std::shared_ptr<StateMachine> empty;
 
-    auto chat_it = machines_.find(message->chat->id);
+	auto chat_it = machines_.find(message->chat->id);
 
-    if (chat_it == std::end(machines_)) {
-        return empty;
-    }
+	if (chat_it == std::end(machines_)) {
+		return empty;
+	}
 
-    auto& chat_machines = chat_it->second;
+	auto& chat_machines = chat_it->second;
 
-    auto message_it = chat_machines.find(message->messageId);
+	auto message_it = chat_machines.find(message->messageId);
 
-    if (message_it == std::end(chat_machines)) {
-        return empty;
-    }
+	if (message_it == std::end(chat_machines)) {
+		return empty;
+	}
 
-    return message_it->second.first;
+	return message_it->second.first;
 }
 
 void StatesController::HandleTextInput(TgBot::Message::Ptr input_message) {
-    const auto listener_it = input_listeners_.find(input_message->chat->id);
+	const auto listener_it = input_listeners_.find(input_message->chat->id);
 
-    if (listener_it == std::end(input_listeners_)) {
-        return;
-    }
+	if (listener_it == std::end(input_listeners_)) {
+		return;
+	}
 
-    const auto& [_, listener] = *listener_it;
+	const auto& [_, listener] = *listener_it;
 
-    if (listener.expired()) {
-        return;
-    }
+	if (listener.expired()) {
+		return;
+	}
 
-    auto machine = listener.lock();
-    input_listeners_.erase(listener_it);
+	auto machine = listener.lock();
+	input_listeners_.erase(listener_it);
 
-    assert(machine);
+	assert(machine);
 
-    machine->OnInput(input_message);
+	machine->OnInput(input_message);
 }
 
 bool StatesController::HandleCallback(const TgBot::Message::Ptr& message, std::string_view data) {
-    const auto& machine = GetMachine(message);
+	const auto& machine = GetMachine(message);
 
-    if (!machine) {
-        return false;
-    }
+	if (!machine) {
+		return false;
+	}
 
-    machine->OnCallback(data);
+	machine->OnCallback(data);
 
-    return true;
+	return true;
+}
+
+void StatesController::ListenForInput(const domain::Context& context) {
+	ListenForInput(context.message);
 }
 
 void StatesController::ListenForInput(const TgBot::Message::Ptr& message) {
-    const auto& machine = GetMachine(message);
+	const auto& machine = GetMachine(message);
 
-    if (!machine) {
-        return;
-    }
+	if (!machine) {
+		return;
+	}
 
-    input_listeners_.insert_or_assign(message->chat->id, machine);
+	input_listeners_.insert_or_assign(message->chat->id, machine);
 }
 
 hanley_bot::Bot& StatesController::GetBot() {
-    return bot_;
+	return bot_;
 }
 
 } // namespace hanley_bot::state

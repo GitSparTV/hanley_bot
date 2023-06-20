@@ -6,41 +6,73 @@
 
 namespace hanley_bot::state {
 
+class StateValue {
+public:
+	enum class ControlValue {
+		kDoNothing = -1,
+		kFinish = -2,
+		kPopState = -3,
+		kUnreachable = -4
+	};
+
+public:
+	StateValue() = delete;
+
+	template<typename Enum> requires std::is_enum_v<Enum>
+	explicit(false) StateValue(Enum state) : value_(static_cast<int>(state)) {}
+
+	explicit(false) StateValue(ControlValue value) : value_(static_cast<int>(value)) {}
+
+	explicit(false) StateValue(bool value) : StateValue(value ? ControlValue::kFinish : ControlValue::kDoNothing) {}
+
+public:
+	inline explicit(false) operator bool() const {
+		return value_ >= 0;
+	}
+
+	bool operator==(const StateValue&) const = default;
+
+	template<typename Enum> requires std::is_enum_v<Enum>
+	inline Enum ToEnum() const {
+		assert(value_ >= 0);
+
+		return static_cast<Enum>(value_);
+	}
+
+	inline ControlValue ToControlValue() const {
+		assert(value_ < 0);
+
+		return static_cast<ControlValue>(value_);
+	}
+
+public:
+	inline static StateValue DoNothing() {
+		return ControlValue::kDoNothing;
+	}
+
+	inline static StateValue Finish() {
+		return ControlValue::kFinish;
+	}
+
+	inline static StateValue PopState() {
+		return ControlValue::kPopState;
+	}
+
+	inline static StateValue Unreachable() {
+		return ControlValue::kUnreachable;
+	}
+
+private:
+	int value_;
+};
+
 template<typename Machine>
 class StateBase {
 public:
 	using Holds = typename Machine::States;
-	using Self = std::shared_ptr<Machine>;
+	using Self = Machine&;
 	using Message = const TgBot::Message::Ptr&;
-
-public:
-	class Value {
-	public:
-		using Underlying = std::underlying_type_t<Holds>;
-
-		static constexpr Underlying kStateNotChanged = -1;
-		static constexpr Underlying kStateFinished = -2;
-
-	public:
-		explicit(false) Value(Holds state) : value_(static_cast<Underlying>(state)) {}
-
-		explicit(false) Value(bool value) : value_(value ? kStateFinished : kStateNotChanged) {}
-
-	public:
-		explicit(false) operator bool() {
-			return value_ >= 0;
-		}
-
-		Holds ToEnum() {
-			assert(value_ != kStateNotChanged);
-			assert(value_ != kStateFinished);
-
-			return static_cast<Holds>(value_);
-		}
-
-	private:
-		Underlying value_;
-	};
+	using Value = StateValue;
 
 public:
 	virtual ~StateBase() = default;
