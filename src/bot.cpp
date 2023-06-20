@@ -91,11 +91,17 @@ void Bot::Run() {
 	bot_.getEvents().onCallbackQuery([this](TgBot::CallbackQuery::Ptr query) {
 		LOG(debug) << "Received onCallbackQuery: " << hanley_bot::tg::debug::DumpCallbackQuery(query);
 
+		auto context = domain::Context::FromCallback(query);
+
 		try {
 			if (query->data.starts_with("static_")) {
-				commands::CallCommand(*this, query->data, domain::Context::FromCallback(query));
-			} else {
-				dialogs_.HandleCallback(query->message, query->data);
+				commands::CallCommand(*this, query->data, context);
+			} else if (query->data.starts_with("d_")
+				&& !dialogs_.HandleCallback(query->message, query->data)) {
+				LOG_VERBOSE(warning) << "Callback is called dialog query, but messsage doesn't have active dialog";
+
+				EditMessage(context, fmt::format("{}\n\n_{}_", context.message->text, "Время работы кнопок истекло, вызовите команду снова"), {}, "Markdown", true);
+				return;
 			}
 
 			AnswerCallbackQuery(query->id);
