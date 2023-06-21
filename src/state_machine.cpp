@@ -13,20 +13,26 @@ void StateMachine::Link(StatesController& controller, const domain::Context& con
 	context_ = context;
 }
 
+StatesController& StateMachine::GetController() {
+	assert(controller_);
+
+	return *controller_;
+}
+
 const domain::Context& StateMachine::GetContext() const {
 	return context_;
 }
 
 hanley_bot::Bot& StateMachine::GetBot() {
-	assert(controller_);
-
-	return controller_->GetBot();
+	return GetController().GetBot();
 }
 
 void StateMachine::ListenForInput() {
-	assert(controller_);
+	GetController().ListenForInput(GetContext());
+}
 
-	controller_->ListenForInput(GetContext());
+void StateMachine::Finish() {
+	GetController().Remove(GetContext());
 }
 
 } // namespace hanley_bot::state
