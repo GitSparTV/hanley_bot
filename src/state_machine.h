@@ -29,11 +29,15 @@ public:
 public:
 	void Link(StatesController& controller, const domain::Context& message);
 
+	StatesController& GetController();
+
 	const domain::Context& GetContext() const;
 
 	hanley_bot::Bot& GetBot();
 
 	void ListenForInput();
+
+	void Finish();
 
 private:
 	StatesController* controller_ = nullptr;

@@ -47,6 +47,8 @@ public:
 
 	void Remove(const TgBot::Message::Ptr& message);
 
+	void Remove(const domain::Context& context);
+
 	std::shared_ptr<StateMachine>& GetMachine(const TgBot::Message::Ptr& message);
 
 	void HandleTextInput(TgBot::Message::Ptr input_message);

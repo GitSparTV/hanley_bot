@@ -56,6 +56,10 @@ void StatesController::Remove(const TgBot::Message::Ptr& message) {
 	GetMachine(message).reset();
 }
 
+void StatesController::Remove(const domain::Context& context) {
+	Remove(context.message);
+}
+
 std::shared_ptr<StateMachine>& StatesController::GetMachine(const TgBot::Message::Ptr& message) {
 	static std::shared_ptr<StateMachine> empty;
 

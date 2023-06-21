@@ -130,48 +130,59 @@ public:
 	}
 
 	StatePtr PopState() {
-		auto back = states_.back();
+		auto back = std::move(states_.back());
 
 		states_.pop_back();
 
 		return back;
 	}
 
-public:
-	void EnterState() final {
-		StateValue result = GetState()->OnEnter(static_cast<Machine&>(*this));
-
+	void Do(StateValue result) {
 		if (result) {
 			PushState(result.ToEnum<typename Machine::States>());
 
-			EnterState();
+			return EnterState();
 		} else {
+			auto control_value = result.ToControlValue();
 
+			using enum StateValue::ControlValue;
+
+			switch (control_value) {
+				case kDoNothing:
+				{
+					return;
+				}
+				case kFinish:
+				{
+					return Finish();
+				}
+				case kPopState:
+				{
+					PopState();
+
+					return;
+				}
+				case kUnreachable:
+				{
+					LOG_VERBOSE(error) << typeid(Machine).name() << " state returned unreachable flag!";
+
+					return Finish();
+				}
+			}
 		}
+	}
+
+public:
+	void EnterState() final {
+		return Do(GetState()->OnEnter(static_cast<Machine&>(*this)));
 	}
 
 	void OnInput(const TgBot::Message::Ptr& input_message) final {
-		StateValue result = GetState()->OnInput(static_cast<Machine&>(*this), input_message);
-
-		if (result) {
-			PushState(result.ToEnum<typename Machine::States>());
-
-			EnterState();
-		} else {
-
-		}
+		return Do(GetState()->OnInput(static_cast<Machine&>(*this), input_message));
 	}
 
 	void OnCallback(std::string_view data) final {
-		StateValue result = GetState()->OnCallback(static_cast<Machine&>(*this), data);
-
-		if (result) {
-			PushState(result.ToEnum<typename Machine::States>());
-
-			EnterState();
-		} else {
-
-		}
+		return Do(GetState()->OnCallback(static_cast<Machine&>(*this), data));
 	}
 
 private:
