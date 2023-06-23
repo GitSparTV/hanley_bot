@@ -177,7 +177,7 @@ void GetCourses(Bot& bot, const domain::Context& context) {
 	auto& tx = bot.BeginTransaction();
 
 	for (const auto& [id, full_name, total, is_subscribed] : tx.query<uint64_t, std::string, uint64_t, bool>(fmt::format("SELECT id, full_name, COUNT(s.telegram_id), EXISTS (SELECT 1 FROM subscriptions WHERE course_id = c.id AND telegram_id = {}) FROM courses c LEFT JOIN subscriptions s ON c.id = s.course_id GROUP BY c.id ORDER BY c.id ASC", context.user))) {
-		result += fmt::format("\n<b>{}.</b>{} <i>{} подписчиков</i>{}", id, full_name, total, is_subscribed ? " <i>(Вы подписаны на уведомления)</i>" : ""sv);
+		result += fmt::format("\n<b>{}.</b> {} <i>{} подписчиков</i>{}", id, full_name, total, is_subscribed ? " <i>(Вы подписаны на уведомления)</i>" : ""sv);
 
 		row.Callback(std::to_string(id), fmt::format("static_courses_get_{}", id));
 
