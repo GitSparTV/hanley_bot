@@ -9,7 +9,7 @@
 
 namespace hanley_bot::dialogs {
 
-MainCourseForm::MainCourseForm() : StateMachineBase(States::START) {}
+MainCourseForm::MainCourseForm() : StateMachineBase(State::START) {}
 
 auto MainCourseForm::Start::OnEnter(Self self) -> Value {
 	std::cout << "Согласие на обработку, инфо про набор" << std::endl;
@@ -28,7 +28,7 @@ auto MainCourseForm::Start::OnEnter(Self self) -> Value {
 
 auto MainCourseForm::Start::OnCallback([[maybe_unused]] Self self, std::string_view data) -> Value {
 	if (data == "d_continue") {
-		return States::INPUT_FIRST_NAME;
+		return State::INPUT_FIRST_NAME;
 	} else if (data == "d_back") {
 		// Call static/groups/get/n
 		return true;
@@ -58,7 +58,7 @@ auto MainCourseForm::InputFirstName::OnInput([[maybe_unused]] Self self, Message
 
 	self.GetBot().GetAPI().deleteMessage(input_message->chat->id, input_message->messageId);
 
-	return States::INPUT_LAST_NAME;
+	return State::INPUT_LAST_NAME;
 }
 
 auto MainCourseForm::InputFirstName::OnCallback([[maybe_unused]] Self self, std::string_view data) -> Value {
@@ -90,7 +90,7 @@ auto MainCourseForm::InputLastName::OnInput(Self self, Message input_message) ->
 
 	self.GetBot().GetAPI().deleteMessage(input_message->chat->id, input_message->messageId);
 
-	return States::INPUT_EMAIL;
+	return State::INPUT_EMAIL;
 }
 
 auto MainCourseForm::InputLastName::OnCallback([[maybe_unused]] Self self, std::string_view data) -> Value {
@@ -136,7 +136,7 @@ auto MainCourseForm::InputEmail::OnInput(Self self, Message input_message) -> Va
 	self.GetBot().GetAPI().deleteMessage(input_message->chat->id, input_message->messageId);
 	self.info.email = input_message->text;
 
-	return States::INPUT_WANTS_CREDENTIALING;
+	return State::INPUT_WANTS_CREDENTIALING;
 }
 
 auto MainCourseForm::InputEmail::OnCallback([[maybe_unused]] Self self, std::string_view data) -> Value {
@@ -178,7 +178,7 @@ auto MainCourseForm::InputWantsCredentialing::OnCallback([[maybe_unused]] Self s
 		return Value::Unreachable();
 	}
 
-	return States::INPUT_PAYMENT_TYPE;
+	return State::INPUT_PAYMENT_TYPE;
 }
 
 auto MainCourseForm::InputPaymentType::OnEnter(Self self) -> Value {
@@ -224,7 +224,7 @@ auto MainCourseForm::InputPaymentType::OnCallback([[maybe_unused]] Self self, st
 		return Value::Unreachable();
 	}
 
-	return States::INPUT_NEEDS_TRANSLATION;
+	return State::INPUT_NEEDS_TRANSLATION;
 }
 
 auto MainCourseForm::InputNeedsTranslation::OnEnter(Self self) -> Value {
@@ -258,14 +258,14 @@ auto MainCourseForm::InputNeedsTranslation::OnCallback([[maybe_unused]] Self sel
 	} else if (data == "d_can_translate") {
 		self.info.needs_translation = NeedsTranslationChoices::CAN_TRANSLATE;
 
-		return States::INPUT_ENGLISH_LEVEL;
+		return State::INPUT_ENGLISH_LEVEL;
 	} else if (data == "d_back") {
 		return Value::PopState();
 	} else {
 		return Value::Unreachable();
 	}
 
-	return States::CONFIRM;
+	return State::CONFIRM;
 }
 
 auto MainCourseForm::InputEnglishLevel::OnEnter(Self self) -> Value {
@@ -289,7 +289,7 @@ auto MainCourseForm::InputEnglishLevel::OnInput(Self self, Message input_message
 
 	self.GetBot().GetAPI().deleteMessage(input_message->chat->id, input_message->messageId);
 
-	return States::CONFIRM;
+	return State::CONFIRM;
 }
 
 auto MainCourseForm::InputEnglishLevel::OnCallback([[maybe_unused]] Self self, std::string_view data) -> Value {

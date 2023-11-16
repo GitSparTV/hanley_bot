@@ -21,6 +21,7 @@
 #include "tg_utils.h"
 #include "tg_debug.h"
 #include "domain.h"
+#include "registration_form.h"
 
 using namespace std::literals;
 
@@ -202,7 +203,13 @@ void GetGroups(Bot& bot, const domain::Context& context) {
 		return;
 	}
 
+	tg::utils::MakeKeyboard keyboard{
+		{
+			{tg::utils::ButtonType::kCallback, "Start", "static_groups_reg_1"}
+		}
+	};
 
+	bot.SendMessage(context, "Group info", keyboard);
 }
 
 extern const std::vector<CommandInfo> kCommands;
@@ -522,9 +529,74 @@ void Subscriptions(Bot& bot, std::deque<std::string_view>& path, const domain::C
 	bot.Commit();
 }
 
+bool IsStudentRegistered(Bot& bot, domain::UserID user) {
+	auto& tx = bot.BeginTransaction();
+
+	auto result = tx.query_value<bool>(fmt::format("SELECT EXISTS(SELECT 1 FROM students WHERE telegram_id = {})", user));
+
+	bot.Commit();
+
+	return result;
+}
+
+void Register(Bot& bot, std::deque<std::string_view>& path, const domain::Context& context) {
+	if (context.IsUserCommand()) {
+		LOG_VERBOSE(warning) << "Invoked from invalid context: " << tg::debug::DumpContext(context);
+
+		return;
+	}
+
+	if (IsStudentRegistered(bot, context.user)) {
+		LOG_VERBOSE(warning) << fmt::format("User {} already registered as student, reg handle was called.", context.user);
+
+		return;
+	}
+
+	std::string called_from = path.empty() ? "" : std::string(path.front());
+
+	bot.GetDialogs().Add<dialogs::RegistrationForm>(context, called_from);
+}
+
+void Groups(Bot& bot, std::deque<std::string_view>& path, const domain::Context& context) {
+	if (path.empty()) {
+		LOG_VERBOSE(error) << "Invalid path. No verb";
+
+		return;
+	}
+
+	const auto verb = path.front();
+
+	path.pop_front();
+
+	if (path.empty()) {
+		LOG_VERBOSE(error) << "Invalid path. No group_id";
+
+		return;
+	}
+
+	const auto group_id = path.front();
+
+	path.pop_front();
+
+	if (IsStudentRegistered(bot, context.user)) {
+
+		return;
+	}
+
+	tg::utils::MakeKeyboard keyboard{
+		{
+			{tg::utils::ButtonType::kCallback, "👨‍🎓 Зарегистрироваться", fmt::format("static_reg_{}", group_id)}
+		}
+	};
+
+	bot.EditMessage(context, "Чтобы записаться на обучение, сначала зарегистрируйтесь как студент.", keyboard);
+}
+
 static const std::unordered_map<std::string_view, StaticQueryInfo> kStaticQueries = {
 	{"courses", {Courses, Permission::kPublic}},
-	{"subs", {Subscriptions, Permission::kPublic}}
+	{"subs", {Subscriptions, Permission::kPublic}},
+	{"reg", {Register, Permission::kPublic}},
+	{"groups", {Groups, Permission::kOwner}}
 };
 
 void CallCommand(Bot& bot, std::string path, const domain::Context& context) {

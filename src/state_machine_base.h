@@ -22,13 +22,13 @@ namespace hanley_bot::state {
 namespace utils {
 
 template<typename Enum, typename Machine>
-concept StatesOf = std::is_same_v<typename Machine::States, Enum>;
+concept StateOf = std::is_same_v<typename Machine::State, Enum>;
 
 template<typename Machine>
 struct FactoryCreator {
 public:
 	using ReturnType = typename Machine::StatePtr;
-	using States = typename Machine::States;
+	using State = typename Machine::State;
 	using FactoryType = ReturnType(*)();
 
 	static std::vector<FactoryType>& GetStorage() {
@@ -54,7 +54,7 @@ public:
 	};
 #endif // !NDEBUG
 
-	template<typename T, States state>
+	template<typename T, State state>
 	static std::nullptr_t Register() {
 #ifndef NDEBUG
 		static const DuplicateCheck<T> check;
@@ -80,7 +80,7 @@ public:
 		return nullptr;
 	}
 
-	static ReturnType Create(States state) {
+	static ReturnType Create(State state) {
 		const auto index = static_cast<size_t>(state);
 
 		const auto& storage = GetStorage();
@@ -96,13 +96,13 @@ public:
 template<typename Machine>
 class StateMachineBase : public StateMachine {
 public:
-	using MyStateBase = StateBase<Machine>;
-	using StatePtr = std::unique_ptr<MyStateBase>;
+	using MyState = StateInterface<Machine>;
+	using StatePtr = std::unique_ptr<MyState>;
 	using StateFactory = utils::FactoryCreator<Machine>;
 
-	template<typename Derived, utils::StatesOf<Machine> auto MyStates>
-	struct State : public MyStateBase {
-		static inline auto Registrator = StateFactory::template Register<Derived, MyStates>();
+	template<typename Derived, utils::StateOf<Machine> auto MyState>
+	struct StateBase : public MyState {
+		static inline auto Registrator = StateFactory::template Register<Derived, MyState>();
 	};
 
 protected:
@@ -110,8 +110,8 @@ protected:
 		PushState(std::move(initial_state));
 	}
 
-	template<utils::StatesOf<Machine> MyStates>
-	explicit StateMachineBase(MyStates state) : StateMachineBase(StateFactory::Create(state)) {}
+	template<utils::StateOf<Machine> MyState>
+	explicit StateMachineBase(MyState state) : StateMachineBase(StateFactory::Create(state)) {}
 
 public:
 	StatePtr& GetState() {
@@ -120,8 +120,8 @@ public:
 		return states_.back();
 	}
 
-	template<utils::StatesOf<Machine> MyStates>
-	StatePtr& PushState(MyStates state) {
+	template<utils::StateOf<Machine> MyState>
+	StatePtr& PushState(MyState state) {
 		return PushState(StateFactory::Create(state));
 	}
 
@@ -139,7 +139,7 @@ public:
 
 	void Do(StateValue result) {
 		if (result) {
-			PushState(result.ToEnum<typename Machine::States>());
+			PushState(result.ToEnum<typename Machine::State>());
 
 			return EnterState();
 		} else {
@@ -160,11 +160,11 @@ public:
 				{
 					PopState();
 
-					return;
+					return EnterState();
 				}
 				case kUnreachable:
 				{
-					LOG_VERBOSE(error) << typeid(Machine).name() << " state returned unreachable flag!";
+					LOG(error) << typeid(Machine).name() << " state " << typeid(*GetState()).name() << " returned unreachable flag!";
 
 					return Finish();
 				}
@@ -174,6 +174,8 @@ public:
 
 public:
 	void EnterState() final {
+		StopListeningForInput();
+
 		return Do(GetState()->OnEnter(static_cast<Machine&>(*this)));
 	}
 

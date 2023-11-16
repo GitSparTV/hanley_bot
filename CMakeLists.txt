@@ -35,6 +35,8 @@ add_executable(hanley_bot
 	src/state_machine_base.h
 	src/states_controller.cpp
 	src/states_controller.h
+	src/registration_form.cpp
+	src/registration_form.h
 	src/main_course_form.cpp
 	src/main_course_form.h
 	src/currency_extension.cpp

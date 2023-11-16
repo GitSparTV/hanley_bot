@@ -31,6 +31,10 @@ void StateMachine::ListenForInput() {
 	GetController().ListenForInput(GetContext());
 }
 
+void StateMachine::StopListeningForInput() {
+	GetController().StopListeningForInput(GetContext());
+}
+
 void StateMachine::Finish() {
 	GetController().Remove(GetContext());
 }

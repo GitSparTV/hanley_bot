@@ -26,8 +26,8 @@ public:
 
 	void CheckForGarbage();
 
-	template<typename T>
-	void Add(const domain::Context& context) {
+	template<typename T, typename... Args>
+	void Add(const domain::Context& context, Args&&... args) {
 		CheckForGarbage();
 
 		auto [machine_it, _] = machines_[context.message->chat->id].emplace(
@@ -42,6 +42,10 @@ public:
 
 		auto machine_downcasted = std::static_pointer_cast<T>(machine);
 
+		if constexpr (sizeof...(args) != 0) {
+			machine_downcasted->ReceiveArgs(std::forward<Args>(args)...);
+		}
+
 		machine_downcasted->EnterState();
 	}
 
@@ -51,13 +55,19 @@ public:
 
 	std::shared_ptr<StateMachine>& GetMachine(const TgBot::Message::Ptr& message);
 
-	void HandleTextInput(TgBot::Message::Ptr input_message);
+	std::weak_ptr<StateMachine>& GetListener(const TgBot::Message::Ptr& message);
+
+	bool HandleTextInput(TgBot::Message::Ptr input_message);
 
 	bool HandleCallback(const TgBot::Message::Ptr& message, std::string_view data);
 
 	void ListenForInput(const domain::Context& context);
 
 	void ListenForInput(const TgBot::Message::Ptr& message);
+
+	void StopListeningForInput(const domain::Context& context);
+
+	void StopListeningForInput(const TgBot::Message::Ptr& message);
 
 	hanley_bot::Bot& GetBot();
 

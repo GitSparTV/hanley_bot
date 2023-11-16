@@ -28,7 +28,7 @@ CREATE TABLE users (
 -- При инициировании диалога будет вызвано это выражение
 SELECT EXISTS(SELECT 1 FROM users WHERE telegram_id = {}) -- Проверяем, что ещё не зарегистрирован
 
-INSERT INTO users (telegram_id, first_name, last_name) VALUES ({}, '{}', NULLIF('{}','')) -- Регистрируем
+INSERT INTO users (telegram_id, first_name, last_name) VALUES ({}, '{}', NULLIF('{}', '')) -- Регистрируем
 
 -- База курсов с описанием на русском
 CREATE TABLE courses (
@@ -123,6 +123,18 @@ CREATE TABLE groups_limits (
 
 ---
 
+-- Промокоды для активации. Уникальный для потока, так как их создают конкретно для оплаченных людей
+CREATE TABLE groups_codes (
+	id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- Уникальный ID
+	group_id INT NOT NULL REFERENCES groups(id), -- Привязанная группа
+	product_id INT NOT NULL REFERENCES products(id), -- Привязанный продукт
+	code TEXT UNIQUE NOT NULL, -- Сам промокод
+	usage_limit INT NOT NULL,
+	uses INT NOT NULL
+);
+
+---
+
 -- Поток/когорта на обучение
 CREATE TABLE groups (
 	id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- Уникальный ID группы
@@ -146,6 +158,6 @@ CREATE TABLE groups_users_info (
 	payment_method INT NOT NULL, -- Тип оплаты. Enum
 	payment_status INT, -- Статус оплаты
 	role TEXT, -- Роль в группе. Например, переводчик или посредник
-	register_date TIMESTAMP NOT NULL, -- Дата регистрации, для статистики
+	register_date TIMESTAMP NOT NULL DEFAULT NOW(), -- Дата регистрации, для статистики
 	PRIMARY KEY (group_id, telegram_id) -- Человек может в той же группе только один
 );

@@ -3,6 +3,9 @@
 #include <cassert>
 #include <memory>
 #include <string_view>
+#include <source_location>
+
+#include "logging.h"
 
 namespace hanley_bot::state {
 
@@ -26,7 +29,7 @@ public:
 	explicit(false) StateValue(bool value) : StateValue(value ? ControlValue::kFinish : ControlValue::kDoNothing) {}
 
 public:
-	inline explicit(false) operator bool() const {
+	inline explicit operator bool() const {
 		return value_ >= 0;
 	}
 
@@ -58,7 +61,9 @@ public:
 		return ControlValue::kPopState;
 	}
 
-	inline static StateValue Unreachable() {
+	inline static StateValue Unreachable(std::source_location location = std::source_location::current()) {
+		LOG(error) << "Unreachable flag thrown at: " << location.file_name() << ":" << location.line() << " in " << location.function_name() << " function";
+
 		return ControlValue::kUnreachable;
 	}
 
@@ -67,14 +72,14 @@ private:
 };
 
 template<typename Machine>
-class StateBase {
+class StateInterface {
 public:
 	using Self = Machine&;
 	using Message = const TgBot::Message::Ptr&;
 	using Value = StateValue;
 
 public:
-	virtual ~StateBase() = default;
+	virtual ~StateInterface() = default;
 
 public:
 	virtual Value OnEnter([[maybe_unused]] Self self) { return false; }

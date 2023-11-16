@@ -72,7 +72,9 @@ void Bot::Run() {
 		LOG(debug) << tg::debug::DumpMessage(message);
 
 		try {
-			dialogs_.HandleTextInput(message);
+			if (dialogs_.HandleTextInput(message)) {
+				DeleteMessage(message);
+			}
 		} catch (const std::exception& ex) {
 			LOG(error) << "Exception caught in HandleTextInput (" << typeid(ex).name() << "): " << ex.what();
 		}
@@ -98,7 +100,7 @@ void Bot::Run() {
 				commands::CallCommand(*this, query->data, context);
 			} else if (query->data.starts_with("d_")
 				&& !dialogs_.HandleCallback(query->message, query->data)) {
-				LOG_VERBOSE(warning) << "Callback is called dialog query, but messsage doesn't have active dialog";
+				LOG_VERBOSE(warning) << "Callback called a dialog query, but messsage doesn't have active dialog";
 
 				EditMessage(context, fmt::format("{}\n\n_{}_", context.message->text, "Время работы кнопок истекло, вызовите команду снова"), {}, "Markdown", true);
 				return;
@@ -250,6 +252,18 @@ TgBot::Message::Ptr Bot::EditMessage(const domain::Context& message_to_edit, con
 	const std::string& parseMode, bool disableWebPagePreview) {
 
 	return EditMessage(message_to_edit.message, text, std::move(replyMarkup), parseMode, disableWebPagePreview);
+}
+
+bool Bot::DeleteMessage(domain::ChatID chat_id, domain::MessageID message_id) {
+	return GetAPI().deleteMessage(chat_id, message_id);
+}
+
+bool Bot::DeleteMessage(const TgBot::Message::Ptr& message_to_delete) {
+	return DeleteMessage(message_to_delete->chat->id, message_to_delete->messageId);
+}
+
+bool Bot::DeleteMessage(const domain::Context& get_from_context) {
+	return DeleteMessage(get_from_context.message);
 }
 
 bool Bot::Typing(domain::ChatID chat_id) {

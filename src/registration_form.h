@@ -6,31 +6,30 @@
 
 namespace hanley_bot::dialogs {
 
-class MainCourseForm final : public state::StateMachineBase<MainCourseForm> {
+class RegistrationForm final : public state::StateMachineBase<RegistrationForm> {
 public:
 	enum class State {
 		START,
 		INPUT_FIRST_NAME,
 		INPUT_LAST_NAME,
 		INPUT_EMAIL,
-		INPUT_WANTS_CREDENTIALING,
-		INPUT_PAYMENT_TYPE,
 		INPUT_NEEDS_TRANSLATION,
 		INPUT_ENGLISH_LEVEL,
-		CONFIRM
+		CONFIRM,
+		FINISH
 	};
 
 public:
-	MainCourseForm();
+	RegistrationForm();
+
+public:
+	void ReceiveArgs(const std::string& called_from) {
+		called_from_ = called_from;
+	}
+
+	void Register();
 
 private:
-	enum class PaymentType {
-		RUBLES,
-		MANUALLY,
-		SWIFT,
-		ORG_INVOICE
-	};
-
 	enum class NeedsTranslationChoices {
 		YES,
 		NO,
@@ -41,8 +40,6 @@ private:
 		std::string name;
 		std::string last_name;
 		std::string email;
-		bool needs_credentialing = false;
-		PaymentType payment_type = PaymentType::RUBLES;
 		NeedsTranslationChoices needs_translation = NeedsTranslationChoices::YES;
 		std::string english_level;
 	};
@@ -78,18 +75,6 @@ private:
 		Value OnCallback(Self self, std::string_view data) override;
 	};
 
-	struct InputWantsCredentialing final : public StateBase<InputWantsCredentialing, State::INPUT_WANTS_CREDENTIALING> {
-		Value OnEnter(Self self) override;
-
-		Value OnCallback(Self self, std::string_view data) override;
-	};
-
-	struct InputPaymentType final : public StateBase<InputPaymentType, State::INPUT_PAYMENT_TYPE> {
-		Value OnEnter(Self self) override;
-
-		Value OnCallback(Self self, std::string_view data) override;
-	};
-
 	struct InputNeedsTranslation final : public StateBase<InputNeedsTranslation, State::INPUT_NEEDS_TRANSLATION> {
 		Value OnEnter(Self self) override;
 
@@ -110,8 +95,15 @@ private:
 		Value OnCallback(Self self, std::string_view data) override;
 	};
 
+	struct Finish final : public StateBase<Finish, State::FINISH> {
+		Value OnEnter(Self self) override;
+
+		Value OnCallback(Self self, std::string_view data) override;
+	};
+
 private:
-	RegistrationInfo info;
+	std::string called_from_;
+	RegistrationInfo info_;
 };
 
 } // namespace hanley_bot::dialogs

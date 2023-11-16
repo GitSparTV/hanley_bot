@@ -21,11 +21,41 @@ BOOST_LOG_ATTRIBUTE_KEYWORD(timestamp, "TimeStamp", boost::posix_time::ptime)
 
 namespace hanley_bot::logger {
 
-void Format(logging::record_view const& rec, logging::formatting_ostream& strm) {
+static const std::unordered_map<logging::trivial::tag::severity::value_type, std::string_view> kSeverityColor = {
+	{logging::trivial::trace, "\x1B[38;5;8m"},
+	{logging::trivial::debug, "\x1B[38;5;21m"},
+	{logging::trivial::info, "\x1B[38;5;15m"},
+	{logging::trivial::warning, "\x1B[38;5;11m"},
+	{logging::trivial::error, "\x1B[38;5;9m"},
+	{logging::trivial::fatal, "\x1B[38;5;196m"},
+};
+
+void ConsoleFormatter(logging::record_view const& rec, logging::formatting_ostream& strm) {
 	namespace expr = boost::log::expressions;
 
 	const auto& ts = *rec[timestamp];
-	strm << '[' << rec[logging::trivial::severity] << "]\t[";
+	const auto& severity = *rec[logging::trivial::severity];
+
+	strm << '[' << kSeverityColor.at(severity) << rec[logging::trivial::severity] << "\033[0m]\t";
+
+	if (rec[logging::trivial::severity] != logging::trivial::warning) {
+		strm << "\t";
+	}
+
+	strm << "[" << to_iso_extended_string(ts) << "]\t";
+
+	if (!rec[log_file_name].empty()) {
+		strm << '[' << rec[log_file_name] << ':' << rec[log_file_line] << "]\t";
+	}
+
+	strm << rec[expr::smessage];
+}
+
+void FileFormatter(logging::record_view const& rec, logging::formatting_ostream& strm) {
+	namespace expr = boost::log::expressions;
+
+	const auto& ts = *rec[timestamp];
+	strm << '[' << rec[logging::trivial::severity] << "]\t\t[";
 	strm << to_iso_extended_string(ts) << "]\t";
 
 	if (!rec[log_file_name].empty()) {
@@ -34,13 +64,14 @@ void Format(logging::record_view const& rec, logging::formatting_ostream& strm) 
 
 	strm << rec[expr::smessage];
 }
+
 namespace keywords = boost::log::keywords;
 
 void ChangeSeverityFilter(std::string_view name) {
 	auto severity = logging::trivial::info;
 
 	if (name == "trace") {
-		severity = logging::trivial::info;
+		severity = logging::trivial::trace;
 	} else if (name == "debug") {
 		severity = logging::trivial::debug;
 	} else if (name == "info") {
@@ -69,19 +100,16 @@ static const std::unordered_map<int, std::string_view> kSignalsSerialized = {
 
 [[noreturn]] void SignalHandler(int signal) {
 	LOG_VERBOSE(fatal) << "Singal "
-		<< (kSignalsSerialized.count(signal) ? kSignalsSerialized.at(signal) : std::to_string(signal))
+		<< (kSignalsSerialized.contains(signal) ? kSignalsSerialized.at(signal) : std::to_string(signal))
 		<< " was caught!";
 
 	exit(signal);
 }
 
 void HookSignals() {
-	std::signal(SIGTERM, SignalHandler);
-	std::signal(SIGSEGV, SignalHandler);
-	std::signal(SIGINT, SignalHandler);
-	std::signal(SIGILL, SignalHandler);
-	std::signal(SIGABRT, SignalHandler);
-	std::signal(SIGFPE, SignalHandler);
+	for (const auto& [signal, _] : kSignalsSerialized) {
+		std::signal(signal, SignalHandler);
+	}
 }
 
 void InitConsole() {
@@ -90,7 +118,7 @@ void InitConsole() {
 	logging::add_console_log(
 		std::cout,
 		keywords::auto_flush = true,
-		keywords::format = &Format
+		keywords::format = &ConsoleFormatter
 	);
 }
 
@@ -100,7 +128,7 @@ void InitFile(std::string log_folder) {
 	logging::add_file_log(
 		keywords::file_name = std::move(log_folder),
 		keywords::open_mode = std::ios::binary | std::ios::app | std::ios::out,
-		keywords::format = &Format,
+		keywords::format = &FileFormatter,
 		keywords::auto_flush = true,
 		keywords::time_based_rotation = sinks::file::rotation_at_time_point(0, 0, 0)
 	);

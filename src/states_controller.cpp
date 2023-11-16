@@ -53,7 +53,15 @@ void StatesController::CheckForGarbage() {
 }
 
 void StatesController::Remove(const TgBot::Message::Ptr& message) {
-	GetMachine(message).reset();
+	auto chat_it = machines_.find(message->chat->id);
+
+	if (chat_it == std::end(machines_)) {
+		return;
+	}
+
+	auto& chat_machines = chat_it->second;
+
+	chat_machines.erase(message->messageId);
 }
 
 void StatesController::Remove(const domain::Context& context) {
@@ -77,28 +85,40 @@ std::shared_ptr<StateMachine>& StatesController::GetMachine(const TgBot::Message
 		return empty;
 	}
 
-	return message_it->second.first;
+	auto& [machine, timestamp] = message_it->second;
+
+	return machine;
 }
 
-void StatesController::HandleTextInput(TgBot::Message::Ptr input_message) {
-	const auto listener_it = input_listeners_.find(input_message->chat->id);
+std::weak_ptr<StateMachine>& StatesController::GetListener(const TgBot::Message::Ptr& message) {
+	static std::weak_ptr<StateMachine> empty;
+
+	auto listener_it = input_listeners_.find(message->chat->id);
 
 	if (listener_it == std::end(input_listeners_)) {
-		return;
+		return empty;
 	}
 
-	const auto& [_, listener] = *listener_it;
+	auto& listener = listener_it->second;
+
+	return listener;
+}
+
+bool StatesController::HandleTextInput(TgBot::Message::Ptr input_message) {
+	const auto& listener = GetListener(input_message);
 
 	if (listener.expired()) {
-		return;
+		return false;
 	}
 
 	auto machine = listener.lock();
-	input_listeners_.erase(listener_it);
-
 	assert(machine);
 
+	StopListeningForInput(input_message);
+
 	machine->OnInput(input_message);
+
+	return true;
 }
 
 bool StatesController::HandleCallback(const TgBot::Message::Ptr& message, std::string_view data) {
@@ -113,10 +133,6 @@ bool StatesController::HandleCallback(const TgBot::Message::Ptr& message, std::s
 	return true;
 }
 
-void StatesController::ListenForInput(const domain::Context& context) {
-	ListenForInput(context.message);
-}
-
 void StatesController::ListenForInput(const TgBot::Message::Ptr& message) {
 	const auto& machine = GetMachine(message);
 
@@ -125,6 +141,18 @@ void StatesController::ListenForInput(const TgBot::Message::Ptr& message) {
 	}
 
 	input_listeners_.insert_or_assign(message->chat->id, machine);
+}
+
+void StatesController::ListenForInput(const domain::Context& context) {
+	ListenForInput(context.message);
+}
+
+void StatesController::StopListeningForInput(const TgBot::Message::Ptr& message) {
+	input_listeners_.erase(message->chat->id);
+}
+
+void StatesController::StopListeningForInput(const domain::Context& context) {
+	StopListeningForInput(context.message);
 }
 
 hanley_bot::Bot& StatesController::GetBot() {

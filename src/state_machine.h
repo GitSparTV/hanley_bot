@@ -37,6 +37,8 @@ public:
 
 	void ListenForInput();
 
+	void StopListeningForInput();
+
 	void Finish();
 
 private:

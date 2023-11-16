@@ -85,6 +85,12 @@ public:
 		TgBot::GenericReply::Ptr replyMarkup = std::make_shared<TgBot::GenericReply>(),
 		const std::string& parseMode = "", bool disableWebPagePreview = false);
 
+	bool DeleteMessage(domain::ChatID chat_id, domain::MessageID message_id);
+
+	bool DeleteMessage(const TgBot::Message::Ptr& message_to_delete);
+
+	bool DeleteMessage(const domain::Context& get_from_context);
+
 	bool Typing(domain::ChatID chat_id);
 
 	void AnswerCallbackQuery(const std::string& query_id, const std::string& text = "",
