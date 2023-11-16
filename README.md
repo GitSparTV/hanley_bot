@@ -51,7 +51,7 @@ Run `build_win_debug.cmd` or `build_linux_release.sh`
 
 ## Running
 
-Put `config.cfg` in `data/` folder. Config template:
+1. Put `config.cfg` in `data/` folder. Config template:
 
 ```json
 {
@@ -69,3 +69,5 @@ Put `config.cfg` in `data/` folder. Config template:
 	"log_folder": "bot_%Y-%m-%d.log" // Log file format.
 }
 ```
+
+2. Run `./hanley_bot data/config.cfg`
