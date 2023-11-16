@@ -43,6 +43,10 @@ For currency information [OpenExchangeRates](https://openexchangerates.org) API 
 > [!NOTE] 
 > Check out [dialog state machine](src/state_machine_base.h) written for multi-staged forms with lots of C++ template magic.
 
+https://github.com/GitSparTV/hanley_bot/assets/5685050/0ca42195-9599-4a1a-9862-073c1f336d99
+
+Full list: C++, JSON, Boost, Conan, CMake, PostgreSQL, REST API, Telegram API, fmt
+
 ## Building
 
 Requires: Conan (not 2.0 version), CMake, PostgreSQL
