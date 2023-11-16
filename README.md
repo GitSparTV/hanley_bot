@@ -75,3 +75,5 @@ Run `build_win_debug.cmd` or `build_linux_release.sh`
 ```
 
 2. Run `./hanley_bot data/config.cfg`
+
+[![HitCount](http://hits.dwyl.com/GitSparTV/hanley_bot.svg?style=flat)](http://hits.dwyl.com/GitSparTV/hanley_bot)
